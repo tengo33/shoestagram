@@ -1,0 +1,26 @@
+.env
+database/runtime/forecast-cache/
+database/runtime/test-sessions/
+database/backups/
+
+# Real environment/secrets
+.env
+.env.*
+!.env.example
+
+# Runtime application data
+database/runtime/
+database/backups/
+
+# PHP session files
+sess_*
+
+# Customer payment proof uploads
+customer/uploads/payment-proofs/*
+!customer/uploads/payment-proofs/.gitkeep
+
+# Logs
+*.log
+
+# Download/archive files that are not source code
+*.zip

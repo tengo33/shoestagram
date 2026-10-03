@@ -1,0 +1,25 @@
+{
+  "name": "Shoestagram",
+  "short_name": "Shoestagram",
+  "description": "Premium sneaker and streetwear recommendation storefront with reservation tracking and admin analytics.",
+  "start_url": "./customer/index.php",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f4f6",
+  "theme_color": "#0d1018",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./products/shoepic.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./products/shoepic.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
