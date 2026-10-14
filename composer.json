@@ -1,0 +1,11 @@
+{
+  "require": {
+    "php": "^8.2",
+    "ext-mysqli": "*",
+    "ext-curl": "*",
+    "ext-mbstring": "*",
+    "ext-openssl": "*",
+    "ext-simplexml": "*",
+    "ext-zip": "*"
+  }
+}

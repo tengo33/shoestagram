@@ -82,16 +82,51 @@ shoestagram_load_env_file(dirname(__DIR__) . DIRECTORY_SEPARATOR . '.env');
 
 require_once __DIR__ . '/catalog_seed.php';
 
-$host = 'localhost';
-$user = 'root';
-$password = '';
-$database = 'shoestagram_db';
+function database_startup_error($message)
+{
+    error_log('Shoestagram database startup: ' . $message);
+    if (PHP_SAPI === 'cli') {
+        exit(1);
+    }
+    http_response_code(503);
+    exit('The store is temporarily unavailable. Please try again later.');
+}
+
+if (!extension_loaded('mysqli')) {
+    database_startup_error('The mysqli PHP extension is missing.');
+}
+
+// Railway MySQL exposes either individual MYSQL* variables or MYSQL_URL.
+// Keep XAMPP defaults only when no deployment database is configured.
+$mysql_url = shoestagram_env('MYSQL_URL', '');
+$url_parts = array();
+if ($mysql_url !== '') {
+    $url_parts = parse_url($mysql_url);
+    if (!is_array($url_parts) || !in_array(strtolower((string) ($url_parts['scheme'] ?? '')), array('mysql', 'mysqli'), true)
+        || empty($url_parts['host']) || empty($url_parts['path'])) {
+        database_startup_error('MYSQL_URL is not a valid MySQL connection URL.');
+    }
+}
+
+$host = shoestagram_env('MYSQLHOST', shoestagram_env('DB_HOST', (string) ($url_parts['host'] ?? 'localhost')));
+$user = shoestagram_env('MYSQLUSER', shoestagram_env('DB_USER', rawurldecode((string) ($url_parts['user'] ?? 'root'))));
+$password = shoestagram_env('MYSQLPASSWORD', shoestagram_env('DB_PASSWORD', rawurldecode((string) ($url_parts['pass'] ?? ''))));
+$database = shoestagram_env('MYSQLDATABASE', shoestagram_env('DB_NAME', rawurldecode(ltrim((string) ($url_parts['path'] ?? 'shoestagram_db'), '/'))));
+$port = (int) shoestagram_env('MYSQLPORT', shoestagram_env('DB_PORT', (string) ($url_parts['port'] ?? 3306)));
+$managed_database = $mysql_url !== '' || shoestagram_env('MYSQLHOST') !== '' || shoestagram_env('DB_HOST') !== '';
+
+if (shoestagram_env('RAILWAY_SERVICE_ID') !== '' && !$managed_database) {
+    database_startup_error('Railway MySQL connection variables are missing from the web service.');
+}
+if ($host === '' || $user === '' || $database === '' || $port < 1 || $port > 65535) {
+    database_startup_error('MySQL connection settings are incomplete or invalid.');
+}
 
 mysqli_report(MYSQLI_REPORT_OFF);
 
-function database_connect_without_schema($host, $user, $password)
+function database_connect_without_schema($host, $user, $password, $port = 3306)
 {
-    $connection = @mysqli_connect($host, $user, $password);
+    $connection = @mysqli_connect($host, $user, $password, null, $port);
 
     if ($connection) {
         @mysqli_set_charset($connection, 'utf8mb4');
@@ -500,24 +535,24 @@ function shoestagram_pending_verification_code_matches($pending, $input_code)
     return false;
 }
 
-function database_ensure_schema($host, $user, $password, $database)
+function database_ensure_schema($host, $user, $password, $database, $port = 3306, $managed_database = false)
 {
-    $bootstrap = database_connect_without_schema($host, $user, $password);
-
-    if (!$bootstrap) {
-        die('Database connection failed. Start MySQL in XAMPP and verify your root credentials.');
+    if (!$managed_database) {
+        $bootstrap = database_connect_without_schema($host, $user, $password, $port);
+        if (!$bootstrap) {
+            database_startup_error('Unable to connect to local MySQL: ' . mysqli_connect_error());
+        }
+        @mysqli_query(
+            $bootstrap,
+            "CREATE DATABASE IF NOT EXISTS `" . preg_replace('/[^a-zA-Z0-9_]/', '', (string) $database) . "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+        );
+        mysqli_close($bootstrap);
     }
 
-    @mysqli_query(
-        $bootstrap,
-        "CREATE DATABASE IF NOT EXISTS `" . preg_replace('/[^a-zA-Z0-9_]/', '', (string) $database) . "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-    );
-    mysqli_close($bootstrap);
-
-    $connection = @mysqli_connect($host, $user, $password, $database);
+    $connection = @mysqli_connect($host, $user, $password, $database, $port);
 
     if (!$connection) {
-        die('Database connection failed for schema "' . htmlspecialchars($database, ENT_QUOTES, 'UTF-8') . '".');
+        database_startup_error('Unable to connect to configured MySQL database: ' . mysqli_connect_error());
     }
 
     @mysqli_set_charset($connection, 'utf8mb4');
@@ -1677,11 +1712,13 @@ function database_get_inventory_logs_page($connection, $requested_page = 1, $per
     return array('rows' => $rows, 'page' => $page, 'pages' => $pages, 'total' => $total, 'per_page' => $per_page, 'key' => 'log_page');
 }
 
-$conn = database_ensure_schema($host, $user, $password, $database);
-database_ensure_tables($conn);
-database_seed_products($conn);
-database_configure_role_accounts($conn);
-database_bootstrap_defaults($conn);
+$conn = database_ensure_schema($host, $user, $password, $database, $port, $managed_database);
+if (!$managed_database) {
+    database_ensure_tables($conn);
+    database_seed_products($conn);
+    database_configure_role_accounts($conn);
+    database_bootstrap_defaults($conn);
+}
 
 if (PHP_SAPI !== 'cli' && session_status() === PHP_SESSION_NONE) {
     session_start();
