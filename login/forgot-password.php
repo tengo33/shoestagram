@@ -14,7 +14,7 @@ function forgot_send_password_reset_code($email, $fullname, $code)
 
 function forgot_mail_failure_message()
 {
-    return shoestagram_mail_delivery_error('Gmail SMTP did not send the password reset code. Please check the Gmail sender settings and try again.');
+    return shoestagram_mail_delivery_error('The password reset code could not be sent. Please try again later or contact the store team.');
 }
 
 $error = '';

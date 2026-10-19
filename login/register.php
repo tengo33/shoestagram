@@ -15,7 +15,7 @@ function register_send_verification_code($email, $fullname, $code)
 
 function register_mail_failure_message()
 {
-    return shoestagram_mail_delivery_error('Gmail SMTP did not send the verification code. Please check the Gmail sender settings and try again.');
+    return shoestagram_mail_delivery_error('The verification code could not be sent. Please try again later or contact the store team.');
 }
 
 function register_profile_from_post($source)

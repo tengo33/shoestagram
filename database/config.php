@@ -432,6 +432,11 @@ function shoestagram_send_email($to, $subject, $message, $reply_to = '')
         return false;
     }
 
+    if (trim(shoestagram_env('BREVO_API_KEY')) !== '') {
+        require_once __DIR__ . '/brevo_mail.php';
+        return shoestagram_send_brevo_email($to, $subject, $message, $reply_to);
+    }
+
     return shoestagram_send_smtp_email($to, $subject, $message, $reply_to);
 }
 
