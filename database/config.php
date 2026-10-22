@@ -437,7 +437,11 @@ function shoestagram_send_email($to, $subject, $message, $reply_to = '')
         return shoestagram_send_brevo_email($to, $subject, $message, $reply_to);
     }
 
-    return shoestagram_send_smtp_email($to, $subject, $message, $reply_to);
+    $sent = shoestagram_send_smtp_email($to, $subject, $message, $reply_to);
+    if (!$sent && shoestagram_env('RAILWAY_SERVICE_ID') !== '') {
+        error_log('Shoestagram mail: BREVO_API_KEY is not configured; SMTP delivery failed.');
+    }
+    return $sent;
 }
 
 function shoestagram_generate_verification_code()

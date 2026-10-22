@@ -75,6 +75,13 @@ function shoestagram_send_brevo_email($to, $subject, $message, $reply_to = '')
     $reason = $response === false
         ? 'Brevo request failed (curl error ' . $curl_error_code . ').'
         : 'Brevo rejected the email (HTTP ' . $status . ').';
+    if ($response !== false) {
+        $api_error = json_decode((string) $response, true);
+        $api_code = is_array($api_error) ? ($api_error['code'] ?? '') : '';
+        if (is_string($api_code) && preg_match('/\A[A-Za-z0-9_-]{1,64}\z/', $api_code)) {
+            $reason .= ' Brevo code: ' . $api_code . '.';
+        }
+    }
     shoestagram_mail_set_last_error($reason);
     error_log('Shoestagram mail: ' . $reason);
     return false;
