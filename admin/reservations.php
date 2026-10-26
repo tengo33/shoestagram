@@ -108,6 +108,7 @@ backoffice_render_shell_start(
                                 <?php if (empty($reservation_orders)): ?><tr><td colspan="8">No reservations match these filters.</td></tr><?php endif; ?>
                                 <?php foreach ($reservation_orders as $order): ?>
                                     <?php $reserved_at = backoffice_manila_datetime($order['created_at'] ?? '', true); ?>
+                                    <?php $updated_at = backoffice_manila_datetime($order['updated_at'] ?? '', true); ?>
                                     <tr>
                                         <td><?php echo htmlspecialchars($order['checkout_id'], ENT_QUOTES, 'UTF-8'); ?></td>
                                         <td><?php echo htmlspecialchars($order['customer_name'], ENT_QUOTES, 'UTF-8'); ?></td>
@@ -117,7 +118,7 @@ backoffice_render_shell_start(
                                         <td><span class="status-pill status-<?php echo strtolower(str_replace(' ', '-', $order['status'])); ?>"><?php echo htmlspecialchars($order['status'], ENT_QUOTES, 'UTF-8'); ?></span></td>
                                         <td><?php if ($reserved_at): ?><?php echo htmlspecialchars($reserved_at->format('M j, Y'), ENT_QUOTES, 'UTF-8'); ?><br><small><?php echo htmlspecialchars($reserved_at->format('g:i A'), ENT_QUOTES, 'UTF-8'); ?></small><?php else: ?>Date unavailable<?php endif; ?></td>
                                         <td>
-                                            <details class="table-details reservation-details">
+                                            <details class="table-details reservation-details" data-detail-title="Reservation and payment details">
                                                 <summary>View / Update</summary>
                                                 <div>
                                                     <p><strong>Reservation ID:</strong> <?php echo htmlspecialchars($order['checkout_id'], ENT_QUOTES, 'UTF-8'); ?></p>
@@ -128,10 +129,11 @@ backoffice_render_shell_start(
                                                     <p><strong>Payment method:</strong> <?php echo htmlspecialchars((string) ($order['payment_method'] ?? 'In-Store Payment'), ENT_QUOTES, 'UTF-8'); ?><br><strong>Payment status:</strong> <?php echo htmlspecialchars((string) ($order['payment_status'] ?? 'Unpaid'), ENT_QUOTES, 'UTF-8'); ?></p>
                                                     <?php if (!empty($order['payment_reference'])): ?><p><strong>Payment reference:</strong> <?php echo htmlspecialchars((string) $order['payment_reference'], ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
                                                     <?php if (!empty($order['payment_proof'])): ?><p><a class="proof-link" href="<?php echo htmlspecialchars('../customer/uploads/payment-proofs/' . rawurlencode(basename((string) $order['payment_proof'])), ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">View payment proof</a></p><?php endif; ?>
+                                                    <?php if (!empty($order['payment_note'])): ?><p><strong>Payment note:</strong> <?php echo nl2br(htmlspecialchars((string) $order['payment_note'], ENT_QUOTES, 'UTF-8')); ?></p><?php endif; ?>
                                                     <p><strong>Reservation status:</strong> <?php echo htmlspecialchars((string) $order['status'], ENT_QUOTES, 'UTF-8'); ?><br><strong>Reserved:</strong> <?php echo $reserved_at ? htmlspecialchars($reserved_at->format('F j, Y · g:i A'), ENT_QUOTES, 'UTF-8') : 'Date unavailable'; ?></p>
+                                                    <?php if ($updated_at): ?><p><strong>Last updated:</strong> <?php echo htmlspecialchars($updated_at->format('F j, Y · g:i A'), ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
                                                     <?php if (!empty($order['pickup_window'])): ?><p><strong>Pickup / completion:</strong> <?php echo htmlspecialchars((string) $order['pickup_window'], ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
-                                                </div>
-                                            </details>
+                                                    <h3>Update status</h3>
                                             <form method="POST" class="reservation-update-form">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(storefront_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
                                                 <input type="hidden" name="admin_action" value="update_order">
@@ -154,6 +156,8 @@ backoffice_render_shell_start(
                                                 </select></label>
                                                 <button type="submit" class="button button-dark">Save</button>
                                             </form>
+                                                </div>
+                                            </details>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

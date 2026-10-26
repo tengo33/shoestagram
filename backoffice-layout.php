@@ -1244,7 +1244,7 @@ function backoffice_render_review_management($reviews, $pagination = null)
                                 <span class="status-pill <?php echo htmlspecialchars(backoffice_review_status_class($status), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?></span>
                             </div>
                             <p class="record-comment-preview"><?php echo htmlspecialchars($review['comment'] ?? '', ENT_QUOTES, 'UTF-8'); ?></p>
-                            <details class="table-details"><summary>Read full review</summary><div><p><?php echo nl2br(htmlspecialchars((string) ($review['comment'] ?? ''), ENT_QUOTES, 'UTF-8')); ?></p><p><strong>Order:</strong> <?php echo htmlspecialchars((string) ($review['order_id'] ?? 'Not recorded'), ENT_QUOTES, 'UTF-8'); ?></p></div></details>
+                            <details class="table-details" data-detail-title="Customer review"><summary>Read full review</summary><div><p><?php echo nl2br(htmlspecialchars((string) ($review['comment'] ?? ''), ENT_QUOTES, 'UTF-8')); ?></p><p><strong>Order:</strong> <?php echo htmlspecialchars((string) ($review['order_id'] ?? 'Not recorded'), ENT_QUOTES, 'UTF-8'); ?></p></div></details>
                             <div class="button-row compact-row" style="margin-top: 14px;">
                                 <?php foreach (store_state_review_statuses() as $status_option): ?>
                                     <?php if ($status_option === $status) { continue; } ?>

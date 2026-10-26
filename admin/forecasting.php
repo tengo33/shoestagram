@@ -131,8 +131,14 @@ backoffice_render_shell_start(
                                         <td><?php echo (int) $product['suggested_stock']; ?></td>
                                         <td><?php echo (int) $product['reorder_gap']; ?></td>
                                         <td>
-                                            <details class="table-details"><summary>View details</summary><div>
+                                            <details class="table-details" data-detail-title="Sales forecast details"><summary>View details</summary><div>
+                                                <p><strong>Product:</strong> <?php echo htmlspecialchars((string) $product['name'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                                <p><strong>Current stock:</strong> <?php echo (int) $product['stock']; ?> units</p>
+                                                <p><strong>30-day demand:</strong> <?php echo (int) $product['next_30d_units']; ?> units</p>
                                                 <p><strong>90-day demand:</strong> <?php echo (int) $product['next_90d_units']; ?> units</p>
+                                                <p><strong>30-day revenue forecast:</strong> <?php echo htmlspecialchars(store_format_money((float) $product['next_30d_revenue']), ENT_QUOTES, 'UTF-8'); ?></p>
+                                                <p><strong>Suggested stock:</strong> <?php echo (int) $product['suggested_stock']; ?> units</p>
+                                                <p><strong>Reorder gap:</strong> <?php echo (int) $product['reorder_gap']; ?> units</p>
                                                 <p><strong>Sales data:</strong> <?php echo htmlspecialchars((string) $product['data_source'], ENT_QUOTES, 'UTF-8'); ?></p>
                                                 <p><strong>Sales history available:</strong> <?php echo htmlspecialchars((string) $product['history_status'], ENT_QUOTES, 'UTF-8'); ?> (<?php echo (int) $product['historical_sales_days']; ?> actual sales days; <?php echo (int) $product['continuous_history_days']; ?> submitted days)</p>
                                                 <p><strong>Forecast source:</strong> <?php echo htmlspecialchars((string) $product['forecast_source'], ENT_QUOTES, 'UTF-8'); ?></p>

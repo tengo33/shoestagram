@@ -154,6 +154,77 @@
         }
     });
 
+    if (typeof window.HTMLDialogElement !== "undefined") {
+        document.querySelectorAll(".table-details").forEach((details, index) => {
+            const summary = details.querySelector(":scope > summary");
+            const content = details.querySelector(":scope > div");
+            if (!summary || !content) {
+                return;
+            }
+
+            const cell = details.closest("td");
+            const row = cell ? cell.closest("tr") : null;
+            const firstCell = row ? row.querySelector("td") : null;
+            const column = cell && cell.cellIndex >= 0
+                ? cell.closest("table")?.querySelectorAll("thead th")[cell.cellIndex]
+                : null;
+            const context = firstCell ? firstCell.textContent.trim().replace(/\s+/g, " ").slice(0, 80) : "";
+            const label = details.dataset.detailTitle || (column ? column.textContent.trim() : "Details");
+            const dialog = document.createElement("dialog");
+            const titleId = `backofficeDetailTitle${index}`;
+            dialog.className = "backoffice-detail-dialog";
+            dialog.id = `backofficeDetail${index}`;
+            dialog.setAttribute("aria-labelledby", titleId);
+
+            const inner = document.createElement("div");
+            inner.className = "backoffice-detail-dialog-inner";
+            const heading = document.createElement("h2");
+            heading.id = titleId;
+            heading.className = "display-font";
+            heading.textContent = context ? `${label}: ${context}` : label;
+            content.classList.add("backoffice-detail-dialog-content");
+            const footer = document.createElement("div");
+            footer.className = "button-row";
+            const closeButton = document.createElement("button");
+            closeButton.type = "button";
+            closeButton.className = "button button-light";
+            closeButton.textContent = "Close";
+            closeButton.addEventListener("click", () => dialog.close());
+            footer.appendChild(closeButton);
+            inner.append(heading, content, footer);
+            dialog.appendChild(inner);
+
+            const triggerGroup = document.createElement("div");
+            triggerGroup.className = "backoffice-detail-cell";
+            const summaryText = summary.textContent.trim().replace(/\s+/g, " ");
+            if (summaryText.length > 35) {
+                const preview = document.createElement("span");
+                preview.className = "backoffice-detail-preview";
+                preview.textContent = summaryText.replace(/\s+View$/i, "");
+                triggerGroup.appendChild(preview);
+            }
+            const openButton = document.createElement("button");
+            openButton.type = "button";
+            openButton.className = "button button-light backoffice-detail-trigger";
+            openButton.textContent = /^View \/ Update$/i.test(summaryText)
+                ? "View / Update"
+                : /message/i.test(summaryText) ? "View message"
+                : /review/i.test(summaryText) ? "Read review" : "View Details";
+            openButton.setAttribute("aria-haspopup", "dialog");
+            openButton.setAttribute("aria-controls", dialog.id);
+            openButton.addEventListener("click", () => dialog.showModal());
+            dialog.addEventListener("close", () => openButton.focus());
+            dialog.addEventListener("click", (event) => {
+                if (event.target === dialog) {
+                    dialog.close();
+                }
+            });
+            triggerGroup.appendChild(openButton);
+            details.replaceWith(triggerGroup);
+            document.body.appendChild(dialog);
+        });
+    }
+
     if (typeof desktopQuery.addEventListener === "function") {
         desktopQuery.addEventListener("change", syncForViewport);
     } else if (typeof desktopQuery.addListener === "function") {

@@ -6933,3 +6933,29 @@ h6 {
         transition: none !important;
     }
 }
+
+.backoffice-detail-dialog {
+    position: fixed;
+    width: min(640px, calc(100vw - 28px));
+    max-width: 100%;
+    max-height: min(85vh, 800px);
+    margin: auto;
+    padding: 0;
+    overflow: auto;
+    border: 1px solid rgba(15, 19, 32, 0.12);
+    border-radius: 22px;
+    background: #fff;
+    color: var(--ink, #171c22);
+    box-shadow: 0 24px 70px rgba(15, 19, 32, 0.22);
+}
+.backoffice-detail-dialog::backdrop { background: rgba(15, 19, 32, 0.56); }
+.backoffice-detail-dialog-inner { padding: clamp(20px, 4vw, 30px); }
+.backoffice-detail-dialog h2 { margin: 0 0 18px; font-size: clamp(1.3rem, 3vw, 1.8rem); overflow-wrap: anywhere; }
+.backoffice-detail-dialog-content { overflow-wrap: anywhere; white-space: normal; line-height: 1.6; }
+.backoffice-detail-dialog-content p { margin: 8px 0; }
+.backoffice-detail-dialog .button-row { margin-top: 22px; }
+.backoffice-detail-cell { display: grid; justify-items: start; gap: 7px; max-width: 220px; }
+.backoffice-detail-preview { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.backoffice-detail-trigger { white-space: nowrap; }
+.backoffice-detail-dialog .reservation-update-form,
+.reservation-details .reservation-update-form { display: grid; margin-top: 20px; }
