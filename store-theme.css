@@ -1960,17 +1960,20 @@ h6 {
 .gallery-main img {
     width: 100%;
     height: 620px;
-    object-fit: cover;
+    object-fit: contain;
+    background: #f5f3ef;
 }
 
 .gallery-thumbs {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
     gap: 12px;
     margin-top: 14px;
+    overflow-x: auto;
+    padding-bottom: 4px;
 }
 
 .gallery-thumb {
+    flex: 0 0 clamp(82px, 23%, 124px);
     padding: 0;
     overflow: hidden;
     border-radius: 18px;
@@ -1984,7 +1987,8 @@ h6 {
 .gallery-thumb img {
     width: 100%;
     height: 120px;
-    object-fit: cover;
+    object-fit: contain;
+    background: #f5f3ef;
 }
 
 .product-detail-stack {

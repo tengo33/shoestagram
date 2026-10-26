@@ -2,6 +2,7 @@
 session_start();
 require_once '../store-data.php';
 require_once 'storefront-layout.php';
+require_once 'product-gallery.php';
 
 $slug = trim((string) ($_GET['slug'] ?? ''));
 $product = get_store_product_by_slug($slug);
@@ -29,6 +30,8 @@ if (!$product) {
     <?php
     exit();
 }
+
+$product['gallery'] = storefront_product_gallery_with_pov($product, get_store_products());
 
 $context = storefront_get_context();
 storefront_track_recent_view($product['id']);
@@ -175,8 +178,9 @@ storefront_render_head(
                     </div>
                     <div class="gallery-thumbs">
                         <?php foreach ($product['gallery'] as $index => $image): ?>
-                            <button type="button" class="gallery-thumb<?php echo $index === 0 ? ' is-active' : ''; ?>" aria-label="View product image <?php echo $index + 1; ?>" aria-pressed="<?php echo $index === 0 ? 'true' : 'false'; ?>" data-gallery-thumb="<?php echo htmlspecialchars($image, ENT_QUOTES, 'UTF-8'); ?>">
-                                <img src="<?php echo htmlspecialchars($image, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?> thumbnail">
+                            <?php $view_label = $index === 0 ? 'Main image' : 'Other view ' . $index; ?>
+                            <button type="button" class="gallery-thumb<?php echo $index === 0 ? ' is-active' : ''; ?>" aria-label="<?php echo htmlspecialchars('View ' . $view_label . ' of ' . $product['name'], ENT_QUOTES, 'UTF-8'); ?>" aria-pressed="<?php echo $index === 0 ? 'true' : 'false'; ?>" data-gallery-thumb="<?php echo htmlspecialchars($image, ENT_QUOTES, 'UTF-8'); ?>">
+                                <img src="<?php echo htmlspecialchars($image, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($product['name'] . ' — ' . $view_label, ENT_QUOTES, 'UTF-8'); ?>" loading="<?php echo $index === 0 ? 'eager' : 'lazy'; ?>">
                             </button>
                         <?php endforeach; ?>
                     </div>

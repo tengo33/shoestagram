@@ -588,16 +588,39 @@ window.ShoestagramUI = (() => {
             return;
         }
 
-        document.querySelectorAll("[data-gallery-thumb]").forEach((button) => {
+        const thumbnails = Array.from(document.querySelectorAll("[data-gallery-thumb]"));
+        thumbnails.forEach((button, index) => {
+            const thumbnail = button.querySelector("img");
+            if (index > 0 && thumbnail) {
+                const removeBrokenView = () => {
+                    const wasActive = button.classList.contains("is-active");
+                    button.remove();
+                    if (wasActive && thumbnails[0]?.isConnected) {
+                        thumbnails[0].click();
+                    }
+                };
+                thumbnail.addEventListener("error", removeBrokenView, { once: true });
+                if (thumbnail.complete && thumbnail.naturalWidth === 0) {
+                    removeBrokenView();
+                }
+            }
             button.addEventListener("click", () => {
                 const src = button.getAttribute("data-gallery-thumb");
-                if (!src) {
+                if (!src || !button.isConnected) {
                     return;
                 }
 
                 mainImage.setAttribute("src", src);
-                document.querySelectorAll("[data-gallery-thumb]").forEach((item) => item.classList.remove("is-active"));
+                if (thumbnail) {
+                    mainImage.setAttribute("alt", thumbnail.getAttribute("alt") || mainImage.getAttribute("alt") || "Product image");
+                }
+                thumbnails.forEach((item) => {
+                    if (!item.isConnected) return;
+                    item.classList.remove("is-active");
+                    item.setAttribute("aria-pressed", "false");
+                });
                 button.classList.add("is-active");
+                button.setAttribute("aria-pressed", "true");
             });
         });
     }
