@@ -37,11 +37,12 @@ function doPost(e) {
   var to = input && typeof input.to === 'string' ? input.to.trim() : '';
   var subject = input && typeof input.subject === 'string' ? input.subject.trim() : '';
   var body = input && typeof input.body === 'string' ? input.body : '';
+  var htmlBody = input && typeof input.htmlBody === 'string' ? input.htmlBody : '';
   var replyTo = input && typeof input.replyTo === 'string' ? input.replyTo.trim() : '';
   var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailPattern.test(to) || (replyTo && !emailPattern.test(replyTo)) ||
       !subject || subject.length > 200 || /[\r\n]/.test(subject) ||
-      !body || body.length > 100000) {
+      !body || body.length > 100000 || htmlBody.length > 200000) {
     return shoestagramRelayResult_({ok: false, code: 'invalid_message'});
   }
 
@@ -50,6 +51,7 @@ function doPost(e) {
       return shoestagramRelayResult_({ok: false, code: 'quota_exceeded'});
     }
     var options = {to: to, subject: subject, body: body, name: 'Shoestagram'};
+    if (htmlBody) options.htmlBody = htmlBody;
     if (replyTo) options.replyTo = replyTo;
     MailApp.sendEmail(options);
     return shoestagramRelayResult_({ok: true});

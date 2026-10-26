@@ -6936,24 +6936,56 @@ h6 {
 
 .backoffice-detail-dialog {
     position: fixed;
-    width: min(640px, calc(100vw - 28px));
+    width: min(680px, calc(100vw - 28px));
     max-width: 100%;
-    max-height: min(85vh, 800px);
+    max-height: min(88vh, 850px);
     margin: auto;
     padding: 0;
-    overflow: auto;
-    border: 1px solid rgba(15, 19, 32, 0.12);
-    border-radius: 22px;
-    background: #fff;
-    color: var(--ink, #171c22);
-    box-shadow: 0 24px 70px rgba(15, 19, 32, 0.22);
+    overflow: hidden;
+    border: 1px solid rgba(235, 123, 78, 0.22);
+    border-radius: 26px;
+    background: #fbf8f3;
+    color: var(--text, #121722);
+    box-shadow: 0 34px 90px rgba(9, 12, 20, 0.32);
 }
-.backoffice-detail-dialog::backdrop { background: rgba(15, 19, 32, 0.56); }
-.backoffice-detail-dialog-inner { padding: clamp(20px, 4vw, 30px); }
-.backoffice-detail-dialog h2 { margin: 0 0 18px; font-size: clamp(1.3rem, 3vw, 1.8rem); overflow-wrap: anywhere; }
-.backoffice-detail-dialog-content { overflow-wrap: anywhere; white-space: normal; line-height: 1.6; }
-.backoffice-detail-dialog-content p { margin: 8px 0; }
-.backoffice-detail-dialog .button-row { margin-top: 22px; }
+.backoffice-detail-dialog::backdrop { background: rgba(9, 12, 20, 0.72); backdrop-filter: blur(4px); }
+.backoffice-detail-dialog-inner { display: flex; flex-direction: column; max-height: min(88vh, 850px); }
+.backoffice-detail-dialog-header {
+    flex: none;
+    padding: clamp(24px, 4vw, 34px);
+    background: radial-gradient(circle at 100% 0%, rgba(235, 123, 78, 0.24), transparent 38%), linear-gradient(135deg, #151925, #0d1018);
+    color: #fff;
+    border-bottom: 4px solid var(--accent, #eb7b4e);
+}
+.backoffice-detail-dialog-eyebrow {
+    display: block;
+    margin-bottom: 12px;
+    color: #f2d2ae;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.17em;
+}
+.backoffice-detail-dialog h2 { margin: 0; color: #fff; font-size: clamp(1.35rem, 3vw, 1.9rem); line-height: 1.25; overflow-wrap: anywhere; }
+.backoffice-detail-dialog-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: clamp(22px, 4vw, 34px);
+    overflow-wrap: anywhere;
+    white-space: normal;
+    line-height: 1.6;
+}
+.backoffice-detail-dialog-content p { margin: 8px 0 14px; }
+.backoffice-detail-dialog-content p strong { color: #121722; }
+.backoffice-detail-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    flex: none;
+    padding: 14px clamp(22px, 4vw, 34px);
+    border-top: 1px solid rgba(15, 19, 32, 0.1);
+    background: #fff;
+}
+.backoffice-detail-dialog-footer .button { min-width: 105px; }
 .backoffice-detail-cell { display: grid; justify-items: start; gap: 7px; max-width: 220px; }
 .backoffice-detail-preview { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .backoffice-detail-trigger { white-space: nowrap; }

@@ -1,7 +1,7 @@
 <?php
 
 /* Brevo's HTTPS API works on Railway plans where outbound SMTP is disabled. */
-function shoestagram_send_brevo_email($to, $subject, $message, $reply_to = '')
+function shoestagram_send_brevo_email($to, $subject, $message, $reply_to = '', $html_message = '')
 {
     shoestagram_mail_set_last_error('');
 
@@ -27,6 +27,7 @@ function shoestagram_send_brevo_email($to, $subject, $message, $reply_to = '')
         'to' => array(array('email' => $to)),
         'subject' => $subject,
         'textContent' => (string) $message,
+        'htmlContent' => (string) $html_message,
     );
     if ($reply_to) {
         $payload['replyTo'] = array('email' => $reply_to);

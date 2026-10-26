@@ -334,7 +334,7 @@ function shoestagram_smtp_escape_message($message)
     return preg_replace('/^\./m', '..', $message);
 }
 
-function shoestagram_send_smtp_email($to, $subject, $message, $reply_to = '')
+function shoestagram_send_smtp_email($to, $subject, $message, $reply_to = '', $html_message = '')
 {
     shoestagram_mail_set_last_error('');
 
@@ -398,14 +398,34 @@ function shoestagram_send_smtp_email($to, $subject, $message, $reply_to = '')
         'To: <' . $to . '>',
         'Subject: ' . $subject,
         'MIME-Version: 1.0',
-        'Content-Type: text/plain; charset=UTF-8',
     );
 
     if ($reply_to) {
         $headers[] = 'Reply-To: ' . $reply_to;
     }
 
-    $body = implode("\r\n", $headers) . "\r\n\r\n" . shoestagram_smtp_escape_message(wordwrap((string) $message, 70));
+    if ($html_message !== '') {
+        $boundary = 'shoestagram-' . bin2hex(random_bytes(12));
+        $headers[] = 'Content-Type: multipart/alternative; boundary="' . $boundary . '"';
+        $parts = array(
+            '--' . $boundary,
+            'Content-Type: text/plain; charset=UTF-8',
+            'Content-Transfer-Encoding: base64',
+            '',
+            rtrim(chunk_split(base64_encode((string) $message), 76, "\r\n")),
+            '--' . $boundary,
+            'Content-Type: text/html; charset=UTF-8',
+            'Content-Transfer-Encoding: base64',
+            '',
+            rtrim(chunk_split(base64_encode((string) $html_message), 76, "\r\n")),
+            '--' . $boundary . '--',
+        );
+        $mail_content = implode("\r\n", $parts);
+    } else {
+        $headers[] = 'Content-Type: text/plain; charset=UTF-8';
+        $mail_content = wordwrap((string) $message, 70);
+    }
+    $body = implode("\r\n", $headers) . "\r\n\r\n" . shoestagram_smtp_escape_message($mail_content);
 
     $ok = $ok
         && shoestagram_smtp_command($socket, 'AUTH LOGIN', 334)
@@ -432,17 +452,23 @@ function shoestagram_send_email($to, $subject, $message, $reply_to = '')
         return false;
     }
 
+    require_once __DIR__ . '/mail_template.php';
+    $html_message = shoestagram_mail_html($subject, $message);
+    if (strlen($html_message) > 200000) {
+        $html_message = '';
+    }
+
     if (trim(shoestagram_env('GMAIL_RELAY_URL')) !== '' || trim(shoestagram_env('GMAIL_RELAY_SECRET')) !== '') {
         require_once __DIR__ . '/gmail_relay_mail.php';
-        return shoestagram_send_gmail_relay_email($to, $subject, $message, $reply_to);
+        return shoestagram_send_gmail_relay_email($to, $subject, $message, $reply_to, $html_message);
     }
 
     if (trim(shoestagram_env('BREVO_API_KEY')) !== '') {
         require_once __DIR__ . '/brevo_mail.php';
-        return shoestagram_send_brevo_email($to, $subject, $message, $reply_to);
+        return shoestagram_send_brevo_email($to, $subject, $message, $reply_to, $html_message);
     }
 
-    $sent = shoestagram_send_smtp_email($to, $subject, $message, $reply_to);
+    $sent = shoestagram_send_smtp_email($to, $subject, $message, $reply_to, $html_message);
     if (!$sent && shoestagram_env('RAILWAY_SERVICE_ID') !== '') {
         error_log('Shoestagram mail: BREVO_API_KEY is not configured; SMTP delivery failed.');
     }

@@ -178,20 +178,26 @@
 
             const inner = document.createElement("div");
             inner.className = "backoffice-detail-dialog-inner";
+            const header = document.createElement("div");
+            header.className = "backoffice-detail-dialog-header";
+            const eyebrow = document.createElement("span");
+            eyebrow.className = "backoffice-detail-dialog-eyebrow";
+            eyebrow.textContent = "SHOESTAGRAM / RECORD DETAILS";
             const heading = document.createElement("h2");
             heading.id = titleId;
             heading.className = "display-font";
             heading.textContent = context ? `${label}: ${context}` : label;
+            header.append(eyebrow, heading);
             content.classList.add("backoffice-detail-dialog-content");
             const footer = document.createElement("div");
-            footer.className = "button-row";
+            footer.className = "backoffice-detail-dialog-footer";
             const closeButton = document.createElement("button");
             closeButton.type = "button";
             closeButton.className = "button button-light";
             closeButton.textContent = "Close";
             closeButton.addEventListener("click", () => dialog.close());
             footer.appendChild(closeButton);
-            inner.append(heading, content, footer);
+            inner.append(header, content, footer);
             dialog.appendChild(inner);
 
             const triggerGroup = document.createElement("div");

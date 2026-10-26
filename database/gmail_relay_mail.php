@@ -1,7 +1,7 @@
 <?php
 
 /* Send through a Gmail-owned Apps Script web app over HTTPS on Railway. */
-function shoestagram_send_gmail_relay_email($to, $subject, $message, $reply_to = '')
+function shoestagram_send_gmail_relay_email($to, $subject, $message, $reply_to = '', $html_message = '')
 {
     shoestagram_mail_set_last_error('');
 
@@ -25,6 +25,7 @@ function shoestagram_send_gmail_relay_email($to, $subject, $message, $reply_to =
         'to' => $to,
         'subject' => $subject,
         'body' => (string) $message,
+        'htmlBody' => (string) $html_message,
         'replyTo' => $reply_to ?: '',
     );
     $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
