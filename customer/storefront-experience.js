@@ -12,6 +12,8 @@
         let productRequest;
         let sizeStandards = {};
         let sizeLabels = {};
+        let sizeStock = null;
+        let totalStock = 0;
         const dialogOpeners = new WeakMap();
 
         function syncQuantityControl(control) {
@@ -149,10 +151,21 @@
         const summary = document.getElementById('modalProductSummary');
         function syncQuickSizes() {
             size.replaceChildren(new Option('Select a size', ''));
-            (sizeStandards[standard.value] || []).forEach(value => size.add(new Option(`${sizeLabels[standard.value] || standard.value} ${value}`, value)));
+            (sizeStandards[standard.value] || []).forEach(value => {
+                const available = sizeStock?.[standard.value]?.[value];
+                const option = new Option(`${sizeLabels[standard.value] || standard.value} ${value}${available === 0 ? ' — Sold out' : ''}`, value);
+                option.disabled = available === 0;
+                size.add(option);
+            });
             size.dispatchEvent(new Event('change', { bubbles: true }));
         }
         standard?.addEventListener('change', syncQuickSizes);
+        size?.addEventListener('change', () => {
+            const available = sizeStock && size.value ? Number(sizeStock[standard.value]?.[size.value] ?? 0) : totalStock;
+            quantity.max = String(Math.max(1, Math.min(totalStock, available)));
+            if (Number(quantity.value) > available) quantity.value = '1';
+            quantity.dispatchEvent(new Event('change', { bubbles: true }));
+        });
         window.openAddToCartModal = async productId => {
             if (document.querySelector('meta[name="shoestagram-authenticated"]')?.content !== '1') {
                 window.location.assign('../login/login.php?redirect=' + encodeURIComponent('../customer/' + location.pathname.split('/').pop() + location.search));
@@ -188,6 +201,10 @@
                 summary.hidden = false;
                 sizeStandards = product.size_standards || { US: product.sizes || [] };
                 sizeLabels = product.size_standard_labels || {};
+                sizeStock = product.size_stock || null;
+                totalStock = Number(product.stock);
+                const anySizeAvailable = !sizeStock || Object.values(sizeStock).some(values => Object.values(values).some(value => Number(value) > 0));
+                if (!anySizeAvailable && totalStock > 0) document.getElementById('modalStockInfo').textContent = 'Size stock being updated';
                 standard.replaceChildren();
                 Object.entries(sizeStandards).forEach(([key, values]) => { if (Array.isArray(values) && values.length) standard.add(new Option(sizeLabels[key] || key, key)); });
                 quantity.value = '1';
@@ -195,8 +212,10 @@
                 quantity.disabled = Number(product.stock) <= 0;
                 quantity.dispatchEvent(new Event('change', { bubbles: true }));
                 syncQuickSizes();
-                if (Number(product.stock) <= 0 || !standard.options.length) {
-                    status.textContent = 'This product is not available to add right now. Explore another piece from the shop.';
+                if (Number(product.stock) <= 0 || !standard.options.length || !anySizeAvailable) {
+                    status.textContent = !anySizeAvailable && Number(product.stock) > 0
+                        ? 'Sizes are temporarily unavailable while stock is updated. Please try again later.'
+                        : 'This product is not available to add right now. Explore another piece from the shop.';
                     return;
                 }
                 status.textContent = 'Select your size before adding to cart.';

@@ -168,7 +168,7 @@
             const column = cell && cell.cellIndex >= 0
                 ? cell.closest("table")?.querySelectorAll("thead th")[cell.cellIndex]
                 : null;
-            const context = firstCell ? firstCell.textContent.trim().replace(/\s+/g, " ").slice(0, 80) : "";
+            const context = firstCell ? (firstCell.innerText || firstCell.textContent).trim().replace(/\s+/g, " ").slice(0, 80) : "";
             const label = details.dataset.detailTitle || (column ? column.textContent.trim() : "Details");
             const dialog = document.createElement("dialog");
             const titleId = `backofficeDetailTitle${index}`;

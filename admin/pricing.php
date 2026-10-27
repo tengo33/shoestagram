@@ -172,7 +172,7 @@ backoffice_render_shell_start(
                                         <td><?php echo number_format((float) $row['margin_percent'], 1); ?>%</td>
                                         <td><?php echo number_format((float) $row['optimal_price'], 2); ?></td>
                                         <td><?php echo (int) $row['forecast_units_optimal']; ?> units / 30d</td>
-                                        <td><details class="table-details"><summary><?php echo htmlspecialchars(function_exists('mb_strimwidth') ? mb_strimwidth((string) $row['improvement'], 0, 48, '…', 'UTF-8') : substr((string) $row['improvement'], 0, 48), ENT_QUOTES, 'UTF-8'); ?> <span>View</span></summary><div><?php echo htmlspecialchars((string) $row['improvement'], ENT_QUOTES, 'UTF-8'); ?></div></details></td>
+                                        <td><details class="table-details" data-detail-title="Pricing recommendation"><summary>View details</summary><div><p><?php echo htmlspecialchars((string) $row['improvement'], ENT_QUOTES, 'UTF-8'); ?></p></div></details></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>

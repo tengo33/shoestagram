@@ -599,6 +599,40 @@ function database_ensure_schema($host, $user, $password, $database, $port = 3306
     return $connection;
 }
 
+function database_ensure_size_stock_tables($connection)
+{
+    // Add only the two optional allocation tables; never alter existing products or orders.
+    $existing = database_fetch_one($connection,
+        "SELECT COUNT(*) AS total FROM information_schema.tables
+         WHERE table_schema = DATABASE() AND table_name IN ('product_size_allocations', 'product_size_stock')");
+    if ((int) ($existing['total'] ?? 0) === 2) {
+        return true;
+    }
+    $header = @mysqli_query($connection, "CREATE TABLE IF NOT EXISTS product_size_allocations (
+        product_id INT PRIMARY KEY,
+        primary_standard VARCHAR(12) NOT NULL,
+        size_signature CHAR(64) NOT NULL,
+        base_stock_snapshot INT NOT NULL,
+        total_stock_snapshot INT NOT NULL,
+        configured_at VARCHAR(40) NOT NULL,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_size_allocation_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    $rows = @mysqli_query($connection, "CREATE TABLE IF NOT EXISTS product_size_stock (
+        product_id INT NOT NULL,
+        size_index SMALLINT UNSIGNED NOT NULL,
+        size_label VARCHAR(60) NOT NULL,
+        quantity INT NOT NULL DEFAULT 0,
+        PRIMARY KEY (product_id, size_index),
+        CONSTRAINT fk_size_stock_allocation FOREIGN KEY (product_id) REFERENCES product_size_allocations(product_id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    if (!$header || !$rows) {
+        error_log('Shoestagram inventory: size-stock tables could not be prepared.');
+    }
+    return (bool) ($header && $rows);
+}
+
 function database_ensure_tables($connection)
 {
     @mysqli_query($connection, "CREATE TABLE IF NOT EXISTS users (
@@ -1759,6 +1793,7 @@ if (!$managed_database) {
     database_configure_role_accounts($conn);
     database_bootstrap_defaults($conn);
 }
+database_ensure_size_stock_tables($conn);
 
 if (PHP_SAPI !== 'cli' && session_status() === PHP_SESSION_NONE) {
     session_start();

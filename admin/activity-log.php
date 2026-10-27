@@ -116,7 +116,7 @@ backoffice_render_shell_start(
                                         <td><?php echo htmlspecialchars((string) ($activity['user_role'] !== '' ? backoffice_role_label($activity['user_role']) : 'Unknown'), ENT_QUOTES, 'UTF-8'); ?></td>
                                         <td><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', (string) $activity['activity_type'])), ENT_QUOTES, 'UTF-8'); ?></td>
                                         <?php $description = (string) ($activity['description'] ?? ''); ?>
-                                        <td><details class="table-details"><summary>View details</summary><div><p><strong>Email:</strong> <?php echo htmlspecialchars((string) ($activity['user_email'] !== '' ? $activity['user_email'] : 'Not available'), ENT_QUOTES, 'UTF-8'); ?></p><p><?php echo nl2br(htmlspecialchars($description, ENT_QUOTES, 'UTF-8')); ?></p></div></details></td>
+                                        <td><details class="table-details" data-detail-title="Activity details"><summary>View details</summary><div><p><strong>Email:</strong> <?php echo htmlspecialchars((string) ($activity['user_email'] !== '' ? $activity['user_email'] : 'Not available'), ENT_QUOTES, 'UTF-8'); ?></p><p><strong>Activity:</strong> <?php echo nl2br(htmlspecialchars($description, ENT_QUOTES, 'UTF-8')); ?></p></div></details></td>
                                         <td><span class="status-pill status-<?php echo $status_class; ?>"><?php echo htmlspecialchars($activity_status, ENT_QUOTES, 'UTF-8'); ?></span></td>
                                     </tr>
                                 <?php endforeach; ?>

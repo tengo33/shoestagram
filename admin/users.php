@@ -254,7 +254,7 @@ backoffice_render_shell_start(
                                         <td><span class="status-pill status-<?php echo $status_class; ?>"><?php echo htmlspecialchars($status_label, ENT_QUOTES, 'UTF-8'); ?></span></td>
                                         <?php $updated_at = backoffice_manila_datetime($user['updated_at'] ?? ''); $joined_at = backoffice_manila_datetime($user['created_at'] ?? ''); ?>
                                         <td><?php echo $updated_at ? htmlspecialchars($updated_at->format('M j, Y'), ENT_QUOTES, 'UTF-8') : 'Date unavailable'; ?></td>
-                                        <td><details class="table-details"><summary>View details</summary><div><p><strong>Phone:</strong> <?php echo htmlspecialchars((string) (($user['phone'] ?? '') !== '' ? $user['phone'] : 'Not recorded'), ENT_QUOTES, 'UTF-8'); ?></p><p><strong>Joined:</strong> <?php echo $joined_at ? htmlspecialchars($joined_at->format('M j, Y'), ENT_QUOTES, 'UTF-8') : 'Date unavailable'; ?></p></div></details></td>
+                                        <td><details class="table-details" data-detail-title="Account details"><summary>View details</summary><div><p><strong>Phone:</strong> <?php echo htmlspecialchars((string) (($user['phone'] ?? '') !== '' ? $user['phone'] : 'Not recorded'), ENT_QUOTES, 'UTF-8'); ?></p><p><strong>Date joined:</strong> <?php echo $joined_at ? htmlspecialchars($joined_at->format('M j, Y'), ENT_QUOTES, 'UTF-8') : 'Date unavailable'; ?></p></div></details></td>
                                         <td>
                                             <div class="button-row">
                                                 <a href="users.php?edit=<?php echo (int) $user['id']; ?>#staffForm" class="button button-light">Edit</a>

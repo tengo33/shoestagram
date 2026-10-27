@@ -140,11 +140,11 @@ backoffice_render_shell_start(
                                                 <p><strong>Suggested stock:</strong> <?php echo (int) $product['suggested_stock']; ?> units</p>
                                                 <p><strong>Reorder gap:</strong> <?php echo (int) $product['reorder_gap']; ?> units</p>
                                                 <p><strong>Sales data:</strong> <?php echo htmlspecialchars((string) $product['data_source'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                                <p><strong>Sales history available:</strong> <?php echo htmlspecialchars((string) $product['history_status'], ENT_QUOTES, 'UTF-8'); ?> (<?php echo (int) $product['historical_sales_days']; ?> actual sales days; <?php echo (int) $product['continuous_history_days']; ?> submitted days)</p>
+                                                <p><strong>Sales history:</strong> <?php echo htmlspecialchars((string) $product['history_status'], ENT_QUOTES, 'UTF-8'); ?> (<?php echo (int) $product['historical_sales_days']; ?> sales days; <?php echo (int) $product['continuous_history_days']; ?> days submitted)</p>
                                                 <p><strong>Forecast source:</strong> <?php echo htmlspecialchars((string) $product['forecast_source'], ENT_QUOTES, 'UTF-8'); ?></p>
                                                 <?php if (empty($product['forecast_available'])): ?><p><?php echo htmlspecialchars((string) $product['forecast_unavailable_message'], ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
-                                                <p><strong>Model:</strong> <?php echo htmlspecialchars((string) ($product['model_method'] ?: 'Not returned'), ENT_QUOTES, 'UTF-8'); ?></p>
-                                                <p><strong>Forecast range:</strong> <?php echo isset($first_period['lower'], $first_period['upper']) ? number_format((float) $first_period['lower'], 2) . '–' . number_format((float) $first_period['upper'], 2) . ' units (day 1)' : 'Not returned'; ?></p>
+                                                <p><strong>Model:</strong> <?php echo htmlspecialchars((string) ($product['model_method'] ?: 'Not available'), ENT_QUOTES, 'UTF-8'); ?></p>
+                                                <p><strong>Forecast range:</strong> <?php echo isset($first_period['lower'], $first_period['upper']) ? number_format((float) $first_period['lower'], 2) . '–' . number_format((float) $first_period['upper'], 2) . ' units (day 1)' : 'Not available'; ?></p>
                                                 <?php $generated_at = backoffice_manila_datetime($product['generated_at'] ?? ''); ?><p><strong>Generated:</strong> <?php echo $generated_at ? htmlspecialchars($generated_at->format('M j, Y · g:i A'), ENT_QUOTES, 'UTF-8') : 'Date unavailable'; ?></p>
                                             </div></details>
                                         </td>

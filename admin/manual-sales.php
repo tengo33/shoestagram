@@ -275,7 +275,7 @@ backoffice_render_shell_start(
                                                 <br><small>Pending client verification</small>
                                             <?php endif; ?>
                                         </td>
-                                        <td><details class="table-details"><summary>View details</summary><div><p><strong>Unit price:</strong> <?php echo htmlspecialchars(store_format_money((float) $sale['unit_price']), ENT_QUOTES, 'UTF-8'); ?></p><p><strong>Payment:</strong> <?php echo htmlspecialchars((string) $sale['payment_method'], ENT_QUOTES, 'UTF-8'); ?></p><p><strong>Note:</strong> <?php echo trim((string) ($sale['notes'] ?? '')) !== '' ? nl2br(htmlspecialchars((string) $sale['notes'], ENT_QUOTES, 'UTF-8')) : 'None'; ?></p></div></details></td>
+                                        <td><details class="table-details" data-detail-title="Sale details"><summary>View details</summary><div><p><strong>Unit price:</strong> <?php echo htmlspecialchars(store_format_money((float) $sale['unit_price']), ENT_QUOTES, 'UTF-8'); ?></p><p><strong>Payment method:</strong> <?php echo htmlspecialchars((string) $sale['payment_method'], ENT_QUOTES, 'UTF-8'); ?></p><p><strong>Note:</strong> <?php echo trim((string) ($sale['notes'] ?? '')) !== '' ? nl2br(htmlspecialchars((string) $sale['notes'], ENT_QUOTES, 'UTF-8')) : 'No note provided.'; ?></p></div></details></td>
                                         <td>
                                             <div class="button-row compact-actions">
                                                 <a class="button button-light" href="manual-sales.php?edit=<?php echo (int) $sale['id']; ?>#manualSaleForm">Edit</a>

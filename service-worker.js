@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "shoestagram-";
-const CACHE_NAME = "shoestagram-v10";
+const CACHE_NAME = "shoestagram-v11";
 const APP_SCOPE_URL = new URL(self.registration.scope);
 
 function appUrl(path) {
@@ -24,8 +24,10 @@ async function cacheResponse(request, response) {
         return;
     }
 
+    // Clone before the first await: respondWith may consume the original meanwhile.
+    const cacheCopy = response.clone();
     const cache = await caches.open(CACHE_NAME);
-    await cache.put(request, response.clone());
+    await cache.put(request, cacheCopy);
 }
 
 function offlineResponse() {
@@ -96,7 +98,9 @@ self.addEventListener("fetch", (event) => {
 
     const requestUrl = new URL(event.request.url);
 
-    if (requestUrl.origin !== self.location.origin || requestUrl.pathname.endsWith("/favicon.ico")) {
+    if (requestUrl.origin !== self.location.origin
+        || requestUrl.pathname.endsWith("/favicon.ico")
+        || requestUrl.pathname.endsWith("/customer/get-product-data.php")) {
         return;
     }
 

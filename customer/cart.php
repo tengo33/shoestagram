@@ -9,6 +9,17 @@ storefront_require_login('cart.php');
 
 $context = storefront_get_context();
 $cart_items = store_get_cart_items($context['user_id']);
+$cart_has_unavailable_items = false;
+foreach ($cart_items as &$cart_item) {
+    $product = $cart_item['product'];
+    $size_available = store_size_stock_available($product, $cart_item['size_standard'] ?? 'US', $cart_item['size'] ?? '');
+    $cart_item['available_stock'] = $size_available === null
+        ? max(0, (int) $product['stock'])
+        : min(max(0, (int) $product['stock']), $size_available);
+    $cart_item['size_stock_configured'] = $size_available !== null;
+    if ((int) $cart_item['quantity'] > $cart_item['available_stock']) $cart_has_unavailable_items = true;
+}
+unset($cart_item);
 $subtotal = store_get_cart_subtotal($context['user_id']);
 $grand_total = $subtotal;
 $gcash_qr_path = store_gcash_qr_public_path('../');
@@ -105,7 +116,8 @@ storefront_render_head(
                                         <span>Size not selected</span>
                                     <?php endif; ?>
                                     <span><?php echo htmlspecialchars(store_format_money($product['price']), ENT_QUOTES, 'UTF-8'); ?> each</span>
-                                    <span><?php echo (int) $product['stock']; ?> in stock</span>
+                                    <span><?php echo (int) $item['available_stock']; ?> <?php echo $item['size_stock_configured'] ? 'available in this size' : 'in stock'; ?></span>
+                                    <?php if ((int) $item['quantity'] > (int) $item['available_stock']): ?><span class="field-note">Reduce the quantity or remove this unavailable item before checkout.</span><?php endif; ?>
                                 </div>
                             </div>
                             <div class="cart-item-controls">
@@ -115,8 +127,8 @@ storefront_render_head(
                                     <input type="hidden" name="cart_id" value="<?php echo (int) $item['cart_id']; ?>">
                                     <input type="hidden" name="redirect" value="cart.php">
                                     <button type="submit" name="quantity_step" value="decrease" data-quantity-decrease data-server-quantity-step aria-label="Decrease quantity"<?php echo (int) $item['quantity'] <= 1 ? ' disabled' : ''; ?>>&minus;</button>
-                                    <input type="number" name="quantity" value="<?php echo (int) $item['quantity']; ?>" min="1" max="<?php echo max(1, (int) $product['stock']); ?>" step="1" inputmode="numeric" aria-label="Quantity for <?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?>" required<?php echo (int) $product['stock'] <= 0 ? ' disabled' : ''; ?>>
-                                    <button type="submit" name="quantity_step" value="increase" data-quantity-increase data-server-quantity-step aria-label="Increase quantity"<?php echo (int) $product['stock'] <= 0 || (int) $item['quantity'] >= (int) $product['stock'] ? ' disabled' : ''; ?>>+</button>
+                                    <input type="number" name="quantity" value="<?php echo (int) $item['quantity']; ?>" min="1" max="<?php echo max(1, (int) $item['available_stock']); ?>" step="1" inputmode="numeric" aria-label="Quantity for <?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?>" required<?php echo (int) $item['available_stock'] <= 0 ? ' disabled' : ''; ?>>
+                                    <button type="submit" name="quantity_step" value="increase" data-quantity-increase data-server-quantity-step aria-label="Increase quantity"<?php echo (int) $item['available_stock'] <= 0 || (int) $item['quantity'] >= (int) $item['available_stock'] ? ' disabled' : ''; ?>>+</button>
                                 </form>
                                 <strong><?php echo htmlspecialchars(store_format_money($item['line_total']), ENT_QUOTES, 'UTF-8'); ?></strong>
                                 <form method="POST" action="cart-action.php">
@@ -200,7 +212,9 @@ storefront_render_head(
                         <span>Grand total</span>
                         <strong><?php echo htmlspecialchars(store_format_money($grand_total), ENT_QUOTES, 'UTF-8'); ?></strong>
                     </div>
-                    <p class="field-note">Online payments are verified by staff. A reservation is not a payment confirmation.</p><button type="submit" class="button button-dark">Reserve now <i class="fas fa-arrow-right" aria-hidden="true"></i></button></div>
+                    <p class="field-note">Online payments are verified by staff. A reservation is not a payment confirmation.</p>
+                    <?php if ($cart_has_unavailable_items): ?><p class="field-note">One or more selected sizes are no longer available in the requested quantity. Update the cart before checkout.</p><?php endif; ?>
+                    <button type="submit" class="button button-dark"<?php echo $cart_has_unavailable_items ? ' disabled' : ''; ?>>Reserve now <i class="fas fa-arrow-right" aria-hidden="true"></i></button></div>
                 </form>
             <?php endif; ?>
         </section>

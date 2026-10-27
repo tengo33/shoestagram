@@ -6934,6 +6934,52 @@ h6 {
     }
 }
 
+.backoffice-more-filters { margin: 14px 0; }
+.backoffice-more-filters > summary { cursor: pointer; color: var(--olive, #46513d); font-weight: 700; }
+.backoffice-size-dialog {
+    position: fixed;
+    width: min(560px, calc(100vw - 28px));
+    max-width: 100%;
+    max-height: min(85vh, 800px);
+    margin: auto;
+    padding: 0;
+    overflow: auto;
+    border: 1px solid rgba(15, 19, 32, 0.12);
+    border-radius: 22px;
+    background: #fff;
+    color: var(--ink, #171c22);
+    box-shadow: 0 24px 70px rgba(15, 19, 32, 0.22);
+}
+.backoffice-size-dialog::backdrop { background: rgba(15, 19, 32, 0.56); }
+.backoffice-size-dialog-inner { padding: clamp(20px, 4vw, 30px); line-height: 1.6; }
+.backoffice-size-dialog .section-head { display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.backoffice-size-dialog .section-head h2 { margin: 6px 0 0; overflow-wrap: anywhere; }
+.backoffice-size-dialog p { margin: 16px 0; }
+.backoffice-size-dialog .table-wrap { margin: 16px 0; }
+.backoffice-size-dialog .data-table { min-width: 0; }
+.backoffice-size-dialog .data-table th,
+.backoffice-size-dialog .data-table td { padding: 10px 12px; }
+.backoffice-size-dialog .data-table tfoot { background: rgba(235, 123, 78, 0.09); }
+.backoffice-size-summary { display: flex; flex-wrap: wrap; gap: 6px; min-width: 190px; max-width: 260px; }
+.backoffice-size-chip {
+    display: inline-block;
+    padding: 4px 8px;
+    border: 1px solid rgba(15, 19, 32, 0.12);
+    border-radius: 9px;
+    background: #fff;
+    font-size: 0.76rem;
+    line-height: 1.35;
+    white-space: nowrap;
+}
+.backoffice-size-chip.is-out { color: #a03f32; border-color: rgba(160, 63, 50, 0.25); background: #fff4f0; }
+.backoffice-size-notice {
+    padding: 14px 16px;
+    border: 1px solid rgba(201, 142, 64, 0.28);
+    border-radius: 14px;
+    background: rgba(250, 238, 215, 0.56);
+}
+.backoffice-size-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+.backoffice-size-dialog .field-note.is-invalid { color: #a03f32; }
 .backoffice-detail-dialog {
     position: fixed;
     width: min(680px, calc(100vw - 28px));
@@ -6975,8 +7021,14 @@ h6 {
     white-space: normal;
     line-height: 1.6;
 }
-.backoffice-detail-dialog-content p { margin: 8px 0 14px; }
+.backoffice-detail-dialog-content p { margin: 0; padding: 11px 0; border-bottom: 1px solid rgba(15, 19, 32, 0.08); }
+.backoffice-detail-dialog-content p:last-child { border-bottom: 0; }
 .backoffice-detail-dialog-content p strong { color: #121722; }
+.backoffice-detail-item-list { margin: 0 0 12px; padding: 0 0 0 20px; }
+.backoffice-detail-item-list li { padding: 5px 0; }
+.backoffice-detail-dialog-content h3 { margin: 24px 0 12px; font-size: 1rem; line-height: 1.4; }
+.backoffice-detail-dialog-content .reservation-update-form { gap: 14px; }
+.backoffice-detail-dialog-content .reservation-update-form label { display: grid; gap: 6px; }
 .backoffice-detail-dialog-footer {
     display: flex;
     justify-content: flex-end;
@@ -6991,3 +7043,8 @@ h6 {
 .backoffice-detail-trigger { white-space: nowrap; }
 .backoffice-detail-dialog .reservation-update-form,
 .reservation-details .reservation-update-form { display: grid; margin-top: 20px; }
+
+@media (max-width: 560px) {
+    .backoffice-size-inputs { grid-template-columns: 1fr; }
+    .backoffice-size-dialog .section-head { flex-wrap: wrap; }
+}

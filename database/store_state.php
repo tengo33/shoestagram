@@ -595,7 +595,7 @@ function store_state_build_reservation_order($user_context, $product, $size, $qu
 {
     $method = store_state_normalize_payment_method($options['payment_method'] ?? 'In-Store Payment');
     $type = store_state_channel_type($options['transaction_type'] ?? 'ONLINE');
-    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format(DateTimeInterface::ATOM);
+    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d\TH:i:s.uP');
     return array(
         'id' => store_state_generate_identifier('ORD'),
         'checkout_id' => trim((string) ($options['checkout_id'] ?? '')),
@@ -632,6 +632,7 @@ function store_state_create_cart_checkout($user_context, $cart_items, $options =
         return array('ok' => false, 'message' => 'Your cart is empty.');
     }
     $needed = array();
+    $needed_sizes = array();
     $available = array();
     foreach ($cart_items as $item) {
         $product = $item['product'] ?? array();
@@ -646,6 +647,17 @@ function store_state_create_cart_checkout($user_context, $cart_items, $options =
         $available[$id] = store_state_available_stock($product);
         if ($needed[$id] > $available[$id]) {
             return array('ok' => false, 'message' => 'Not enough stock for ' . (string) ($product['name'] ?? 'a product') . '.');
+        }
+        if (function_exists('store_size_stock_available')) {
+            $size_available = store_size_stock_available($product, $standard, $item['size']);
+            if ($size_available !== null) {
+                $size_index = store_size_stock_variant_index($product, $standard, $item['size']);
+                $size_key = $id . ':' . $size_index;
+                $needed_sizes[$size_key] = ($needed_sizes[$size_key] ?? 0) + $quantity;
+                if ($needed_sizes[$size_key] > $size_available) {
+                    return array('ok' => false, 'message' => 'Not enough stock in the selected size for ' . (string) ($product['name'] ?? 'a product') . '.');
+                }
+            }
         }
     }
     $checkout_id = store_state_generate_identifier('ORD');
@@ -713,8 +725,15 @@ function store_state_create_reservation($user_context, $product, $size, $quantit
         );
     }
 
+    if (function_exists('store_size_stock_available')) {
+        $size_available = store_size_stock_available($product, $size_standard, $size);
+        if ($size_available !== null && $quantity > $size_available) {
+            return array('ok' => false, 'message' => 'Only ' . $size_available . ' unit(s) are available in the selected size.');
+        }
+    }
+
     $orders = store_state_get_orders();
-    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format(DateTimeInterface::ATOM);
+    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d\TH:i:s.uP');
     $order = array(
         'id' => store_state_generate_identifier('ORD'),
         'type' => $order_type !== '' ? $order_type : 'Reservation',

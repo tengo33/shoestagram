@@ -21,6 +21,7 @@ echo json_encode([
     'image' => $product['image'],
     'sizes' => $product['sizes'],
     'size_standards' => $product['size_standards'] ?? array('US' => $product['sizes']),
+    'size_stock' => store_size_stock_availability_map($product),
     'size_standard_labels' => store_size_standard_labels(),
     'stock' => (int) $product['stock']
 ]);

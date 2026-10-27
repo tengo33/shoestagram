@@ -153,6 +153,9 @@ $completed_product_orders = $context['is_logged_in']
     : array();
 $size_standard_labels = store_size_standard_labels();
 $product_size_standards = $product['size_standards'] ?? array('US' => $product['sizes']);
+$product_size_state = store_size_stock_state($product);
+$product_size_stock = store_size_stock_availability_map($product);
+$size_stock_paused = !empty($product_size_state['allocation_exists']) && empty($product_size_state['configured']);
 $gcash_qr_path = store_gcash_qr_public_path('../');
 
 storefront_render_head(
@@ -210,7 +213,7 @@ storefront_render_head(
                                     <span class="sale-note"><?php echo htmlspecialchars($product['promotion']['title'] . ' · ' . number_format((float) $product['promotion']['discount_percent'], 0) . '% off', ENT_QUOTES, 'UTF-8'); ?></span>
                                 <?php endif; ?>
                             </div>
-                            <span class="status-pill status-<?php echo strtolower(str_replace(' ', '-', $product['stock_status'])); ?>"><?php echo htmlspecialchars($product['stock_status'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <span class="status-pill <?php echo $size_stock_paused ? 'status-warning' : 'status-' . strtolower(str_replace(' ', '-', $product['stock_status'])); ?>"><?php echo $size_stock_paused ? 'Size stock being updated' : htmlspecialchars($product['stock_status'], ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
 
                         <div class="fact-grid">
@@ -223,7 +226,7 @@ storefront_render_head(
                                 <strong><?php echo htmlspecialchars($product['colorway'], ENT_QUOTES, 'UTF-8'); ?></strong>
                             </div>
                             <div class="fact-card">
-                                <span>Available stock</span>
+                                <span><?php echo $size_stock_paused ? 'Total stock (size allocation pending)' : 'Available stock'; ?></span>
                                 <strong><?php echo (int) $product['stock']; ?> units</strong>
                             </div>
                             <div class="fact-card">
@@ -254,18 +257,18 @@ storefront_render_head(
                                 </div>
                                 <div class="field">
                                     <label for="size">Choose size</label>
-                                    <select id="size" name="size" required data-size-choices<?php echo (int) $product['stock'] <= 0 ? ' disabled' : ''; ?>>
+                                    <select id="size" name="size" required data-size-choices<?php echo (int) $product['stock'] <= 0 || $size_stock_paused ? ' disabled' : ''; ?>>
                                         <option value="">Select a size</option>
                                     </select>
                                 </div>
                                 <div class="field">
                                     <label for="quantity">Quantity</label>
                                     <div class="quantity-control" data-quantity-control>
-                                        <button type="button" data-quantity-decrease aria-label="Decrease quantity"<?php echo (int) $product['stock'] <= 0 ? ' disabled' : ''; ?>>&minus;</button>
-                                        <input type="number" id="quantity" name="quantity" value="1" min="1" max="<?php echo max(1, (int) $product['stock']); ?>" step="1" inputmode="numeric" aria-label="Quantity" required<?php echo (int) $product['stock'] <= 0 ? ' disabled' : ''; ?>>
-                                        <button type="button" data-quantity-increase aria-label="Increase quantity"<?php echo (int) $product['stock'] <= 0 ? ' disabled' : ''; ?>>+</button>
+                                        <button type="button" data-quantity-decrease aria-label="Decrease quantity"<?php echo (int) $product['stock'] <= 0 || $size_stock_paused ? ' disabled' : ''; ?>>&minus;</button>
+                                        <input type="number" id="quantity" name="quantity" value="1" min="1" max="<?php echo max(1, (int) $product['stock']); ?>" step="1" inputmode="numeric" aria-label="Quantity" required<?php echo (int) $product['stock'] <= 0 || $size_stock_paused ? ' disabled' : ''; ?>>
+                                        <button type="button" data-quantity-increase aria-label="Increase quantity"<?php echo (int) $product['stock'] <= 0 || $size_stock_paused ? ' disabled' : ''; ?>>+</button>
                                     </div>
-                                    <small class="field-note"><?php echo (int) $product['stock'] > 0 ? (int) $product['stock'] . ' currently available.' : 'Out of stock.'; ?></small>
+                                    <small class="field-note"><?php echo $size_stock_paused ? 'Size availability is temporarily paused while stock is updated.' : ((int) $product['stock'] > 0 ? (int) $product['stock'] . ' currently available.' : 'Out of stock.'); ?></small>
                                 </div>
                                 <div class="field">
                                     <label for="payment_method">Payment method</label>
@@ -326,8 +329,8 @@ storefront_render_head(
                                 </div>
                             </div>
                             <div class="button-row">
-                                <button type="submit" class="button button-dark"<?php echo (int) $product['stock'] <= 0 ? ' disabled' : ''; ?><?php echo $context['is_logged_in'] ? '' : ' data-requires-account'; ?>>Reserve now</button>
-                                <button type="submit" class="button button-light" form="productCartForm"<?php echo (int) $product['stock'] <= 0 ? ' disabled' : ''; ?><?php echo $context['is_logged_in'] ? '' : ' data-requires-account'; ?>>Add to cart</button>
+                                <button type="submit" class="button button-dark"<?php echo (int) $product['stock'] <= 0 || $size_stock_paused ? ' disabled' : ''; ?><?php echo $context['is_logged_in'] ? '' : ' data-requires-account'; ?>>Reserve now</button>
+                                <button type="submit" class="button button-light" form="productCartForm"<?php echo (int) $product['stock'] <= 0 || $size_stock_paused ? ' disabled' : ''; ?><?php echo $context['is_logged_in'] ? '' : ' data-requires-account'; ?>>Add to cart</button>
                                 <button type="submit" class="button button-light" form="productWishlistForm"<?php echo $context['is_logged_in'] ? '' : ' data-requires-account'; ?>>
                                     <?php echo $is_wishlisted ? 'Saved' : 'Save'; ?>
                                 </button>
@@ -493,6 +496,7 @@ storefront_render_head(
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         const sizeStandards = <?php echo json_encode($product_size_standards, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+        const sizeStock = <?php echo json_encode($product_size_stock, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
         const standardLabels = <?php echo json_encode($size_standard_labels, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
         const standardSelect = document.getElementById('size_standard');
         const sizeSelect = document.getElementById('size');
@@ -516,7 +520,9 @@ storefront_render_head(
             sizes.forEach(function (size) {
                 const option = document.createElement('option');
                 option.value = size;
-                option.textContent = (standardLabels[standard] || standard) + ' ' + size;
+                const available = sizeStock && sizeStock[standard] ? Number(sizeStock[standard][size]) : null;
+                option.disabled = available !== null && available <= 0;
+                option.textContent = (standardLabels[standard] || standard) + ' ' + size + (option.disabled ? ' — Sold out' : '');
                 sizeSelect.appendChild(option);
             });
 
@@ -562,6 +568,17 @@ storefront_render_head(
             sizeSelect.addEventListener('change', function () {
                 if (cartSize) {
                     cartSize.value = sizeSelect.value;
+                }
+                if (sizeStock && sizeSelect.value) {
+                    const available = Number(sizeStock[standardSelect.value]?.[sizeSelect.value] ?? 0);
+                    const quantity = document.getElementById('quantity');
+                    if (quantity) {
+                        quantity.max = String(Math.max(1, available));
+                        if (Number(quantity.value) > available) quantity.value = '1';
+                        quantity.dispatchEvent(new Event('change', { bubbles: true }));
+                        const note = quantity.closest('.field')?.querySelector('.field-note');
+                        if (note) note.textContent = available + ' available in this size.';
+                    }
                 }
             });
         }

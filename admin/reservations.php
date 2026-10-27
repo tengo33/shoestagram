@@ -124,7 +124,9 @@ backoffice_render_shell_start(
                                                     <p><strong>Reservation ID:</strong> <?php echo htmlspecialchars($order['checkout_id'], ENT_QUOTES, 'UTF-8'); ?></p>
                                                     <p><strong>Customer:</strong> <?php echo htmlspecialchars($order['customer_name'], ENT_QUOTES, 'UTF-8'); ?><br><?php echo htmlspecialchars($order['customer_email'], ENT_QUOTES, 'UTF-8'); ?></p>
                                                     <p><strong>Products:</strong></p>
-                                                    <?php foreach ($order['items'] as $item): ?><p><?php echo htmlspecialchars($item['product_name'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars(store_order_size_display($item), ENT_QUOTES, 'UTF-8'); ?> × <?php echo (int) $item['quantity']; ?></p><?php endforeach; ?>
+                                                    <ul class="backoffice-detail-item-list">
+                                                        <?php foreach ($order['items'] as $item): ?><li><?php echo htmlspecialchars($item['product_name'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars(store_order_size_display($item), ENT_QUOTES, 'UTF-8'); ?> × <?php echo (int) $item['quantity']; ?></li><?php endforeach; ?>
+                                                    </ul>
                                                     <p><strong>Amount:</strong> <?php echo htmlspecialchars(store_format_money((float) $order['subtotal']), ENT_QUOTES, 'UTF-8'); ?></p>
                                                     <p><strong>Payment method:</strong> <?php echo htmlspecialchars((string) ($order['payment_method'] ?? 'In-Store Payment'), ENT_QUOTES, 'UTF-8'); ?><br><strong>Payment status:</strong> <?php echo htmlspecialchars((string) ($order['payment_status'] ?? 'Unpaid'), ENT_QUOTES, 'UTF-8'); ?></p>
                                                     <?php if (!empty($order['payment_reference'])): ?><p><strong>Payment reference:</strong> <?php echo htmlspecialchars((string) $order['payment_reference'], ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
@@ -132,7 +134,7 @@ backoffice_render_shell_start(
                                                     <?php if (!empty($order['payment_note'])): ?><p><strong>Payment note:</strong> <?php echo nl2br(htmlspecialchars((string) $order['payment_note'], ENT_QUOTES, 'UTF-8')); ?></p><?php endif; ?>
                                                     <p><strong>Reservation status:</strong> <?php echo htmlspecialchars((string) $order['status'], ENT_QUOTES, 'UTF-8'); ?><br><strong>Reserved:</strong> <?php echo $reserved_at ? htmlspecialchars($reserved_at->format('F j, Y · g:i A'), ENT_QUOTES, 'UTF-8') : 'Date unavailable'; ?></p>
                                                     <?php if ($updated_at): ?><p><strong>Last updated:</strong> <?php echo htmlspecialchars($updated_at->format('F j, Y · g:i A'), ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
-                                                    <?php if (!empty($order['pickup_window'])): ?><p><strong>Pickup / completion:</strong> <?php echo htmlspecialchars((string) $order['pickup_window'], ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
+                                                    <?php if (!empty($order['pickup_window'])): ?><p><strong>Pickup or completion:</strong> <?php echo htmlspecialchars((string) $order['pickup_window'], ENT_QUOTES, 'UTF-8'); ?></p><?php endif; ?>
                                                     <h3>Update status</h3>
                                             <form method="POST" class="reservation-update-form">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(storefront_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">

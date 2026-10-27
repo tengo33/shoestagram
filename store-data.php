@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/database/config.php';
 require_once __DIR__ . '/database/store_state.php';
+require_once __DIR__ . '/database/size_stock.php';
 require_once __DIR__ . '/database/forecast_api.php';
 require_once __DIR__ . '/database/review_seed.php';
 
@@ -2238,6 +2239,9 @@ function store_save_product($input, $product_id = 0)
     $connection = store_db_connection();
 
     if ($existing) {
+        $size_allocation_exists = database_fetch_one($connection, 'SELECT product_id FROM product_size_allocations WHERE product_id = ?', 'i', array((int) $product_id));
+        $allocation_changed = (int) $existing['base_stock'] !== (int) $product['stock']
+            || store_size_stock_signature($existing) !== store_size_stock_signature($product);
         $ok = database_execute(
             $connection,
             "UPDATE products SET
@@ -2300,7 +2304,9 @@ function store_save_product($input, $product_id = 0)
 
         return array(
             'ok' => $ok,
-            'message' => $ok ? 'Product updated successfully.' : 'Product update failed.',
+            'message' => $ok
+                ? ('Product updated successfully.' . ($size_allocation_exists && $allocation_changed ? ' Reconfigure size stock before customers can order this product.' : ''))
+                : 'Product update failed.',
         );
     }
 
@@ -2412,7 +2418,11 @@ function store_update_product_size_standards($product_id, $input)
 
     return array(
         'ok' => $ok,
-        'message' => $ok ? 'Product size standards updated successfully.' : 'Product size standards could not be updated.',
+        'message' => $ok
+            ? ('Product size standards updated successfully.' . (store_size_stock_signature($product) !== store_size_stock_signature(array('size_standards' => $size_standards))
+                && database_fetch_one(store_db_connection(), 'SELECT product_id FROM product_size_allocations WHERE product_id = ?', 'i', array((int) $product_id))
+                ? ' Admin must reconfigure size stock before customers can order this product.' : ''))
+            : 'Product size standards could not be updated.',
     );
 }
 
@@ -2681,6 +2691,11 @@ function store_add_cart_item($user_id, $product_id, $quantity = 1, $size = '', $
     );
     $existing_quantity = max(0, (int) ($existing['quantity'] ?? 0));
 
+    $size_available = store_size_stock_available($product, $size_standard, $size);
+    if ($size_available !== null) {
+        $available_stock = min($available_stock, $size_available);
+    }
+
     if (($existing_quantity + $quantity) > $available_stock) {
         return array(
             'ok' => false,
@@ -2714,7 +2729,7 @@ function store_update_cart_item($user_id, $cart_id, $quantity)
 
     $cart_row = database_fetch_one(
         store_db_connection(),
-        "SELECT product_id FROM cart WHERE id = ? AND user_id = ? LIMIT 1",
+        "SELECT product_id, size_standard, size FROM cart WHERE id = ? AND user_id = ? LIMIT 1",
         'ii',
         array($cart_id, (int) $user_id)
     );
@@ -2726,6 +2741,10 @@ function store_update_cart_item($user_id, $cart_id, $quantity)
 
     $quantity = (int) $quantity;
     $available_stock = max(0, (int) ($product['stock'] ?? 0));
+    $size_available = store_size_stock_available($product, $cart_row['size_standard'] ?? 'US', $cart_row['size'] ?? '');
+    if ($size_available !== null) {
+        $available_stock = min($available_stock, $size_available);
+    }
     if ($available_stock <= 0) {
         return array('ok' => false, 'message' => $product['name'] . ' is currently out of stock.');
     }

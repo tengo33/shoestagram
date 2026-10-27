@@ -30,6 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: inventory.php');
         exit();
     }
+
+    if ($inventory_action === 'save_size_stock') {
+        $result = store_save_size_stock_allocation((int) ($_POST['product_id'] ?? 0), $_POST);
+        storefront_set_flash(!empty($result['ok']) ? 'success' : 'error', $result['message']);
+        header('Location: inventory.php#productRecords');
+        exit();
+    }
 }
 
 $stats = backoffice_get_stats($conn);
@@ -219,33 +226,68 @@ backoffice_render_shell_start(
                                     <th>Product</th>
                                     <th>Category</th>
                                     <th>Price (PHP)</th>
+                                    <th>Total stock</th>
                                     <th>Stock status</th>
-                                    <th>Suggested stock</th>
-                                    <th>Details</th>
+                                    <th>Stock by size</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($inventory_products)): ?><tr><td colspan="7">No products are available yet.</td></tr><?php endif; ?>
                                 <?php foreach ($inventory_products as $product): ?>
+                                    <?php $size_stock = store_size_stock_state($product); $size_dialog_id = 'sizeStock-' . (int) $product['id']; ?>
                                     <tr>
                                         <td><?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?><br><small><?php echo htmlspecialchars($product['brand'], ENT_QUOTES, 'UTF-8'); ?></small></td>
                                         <td><?php echo htmlspecialchars(get_store_category_label($product['category']), ENT_QUOTES, 'UTF-8'); ?></td>
                                         <td><?php echo number_format((float) $product['price'], 2); ?></td>
-                                        <td><span class="status-pill status-<?php echo strtolower(str_replace(' ', '-', $product['stock_status'])); ?>"><?php echo htmlspecialchars((string) $product['stock_status'], ENT_QUOTES, 'UTF-8'); ?></span><br><small><?php echo (int) $product['stock']; ?> left</small></td>
-                                        <td><?php echo (int) $product['suggested_stock']; ?></td>
-                                        <td><details class="table-details" data-detail-title="Inventory details"><summary>View details</summary><div>
-                                            <p><strong>Product:</strong> <?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                            <p><strong>Category:</strong> <?php echo htmlspecialchars(get_store_category_label($product['category']), ENT_QUOTES, 'UTF-8'); ?><br><strong>Brand:</strong> <?php echo htmlspecialchars((string) $product['brand'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                            <p><strong>Price:</strong> <?php echo htmlspecialchars(store_format_money((float) $product['price']), ENT_QUOTES, 'UTF-8'); ?><br><strong>Total available stock:</strong> <?php echo (int) $product['stock']; ?><br><strong>Stock status:</strong> <?php echo htmlspecialchars((string) $product['stock_status'], ENT_QUOTES, 'UTF-8'); ?></p>
-                                            <p><strong>Suggested stock:</strong> <?php echo (int) $product['suggested_stock']; ?><br><strong>Estimated cost:</strong> <?php echo htmlspecialchars((string) $product['cost_display'], ENT_QUOTES, 'UTF-8'); ?><br><strong>Estimated profit:</strong> <?php echo htmlspecialchars((string) $product['profit_display'], ENT_QUOTES, 'UTF-8'); ?><br><strong>Reservations:</strong> <?php echo (int) $product['reservations']; ?></p>
-                                            <?php $size_standards = array_filter((array) ($product['size_standards'] ?? array())); ?>
-                                            <?php if (!$size_standards): ?><p><strong>Available sizes:</strong> Not applicable</p><?php endif; ?>
-                                            <?php foreach ($size_standards as $standard => $sizes): ?><p><strong><?php echo htmlspecialchars(store_size_standard_label($standard), ENT_QUOTES, 'UTF-8'); ?> sizes:</strong> <?php echo htmlspecialchars(implode(', ', array_map('strval', (array) $sizes)), ENT_QUOTES, 'UTF-8'); ?></p><?php endforeach; ?>
-                                        </div></details></td>
+                                        <td><strong><?php echo (int) $product['stock']; ?></strong></td>
+                                        <td><span class="status-pill status-<?php echo strtolower(str_replace(' ', '-', $product['stock_status'])); ?>"><?php echo htmlspecialchars((string) $product['stock_status'], ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                        <td>
+                                            <?php if ($size_stock['standard'] === ''): ?>
+                                                <span class="field-note">Not applicable</span>
+                                            <?php elseif ($size_stock['configured']): ?>
+                                                <div class="backoffice-size-summary" aria-label="Remaining stock by size">
+                                                    <?php foreach ($size_stock['rows'] as $size_row): ?>
+                                                        <span class="backoffice-size-chip<?php echo (int) $size_row['quantity'] === 0 ? ' is-out' : ''; ?>"><?php echo htmlspecialchars($size_stock['standard'] . ' ' . $size_row['size'], ENT_QUOTES, 'UTF-8'); ?>: <strong><?php echo (int) $size_row['quantity']; ?></strong><?php echo (int) $size_row['quantity'] === 0 ? ' · Out of stock' : ''; ?></span>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="field-note"><?php echo $size_stock['allocation_exists'] ? 'Reconciliation needed' : 'Allocation needed'; ?></span>
+                                            <?php endif; ?>
+                                                <dialog id="<?php echo $size_dialog_id; ?>" class="backoffice-size-dialog" aria-labelledby="<?php echo $size_dialog_id; ?>Title">
+                                                    <div class="backoffice-size-dialog-inner">
+                                                        <div class="section-head compact-head"><div><span class="eyebrow">Inventory details</span><h2 id="<?php echo $size_dialog_id; ?>Title" class="display-font"><?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?></h2></div><button type="button" class="button button-light" data-size-dialog-close>Close</button></div>
+                                                        <p><strong>Category:</strong> <?php echo htmlspecialchars(get_store_category_label($product['category']), ENT_QUOTES, 'UTF-8'); ?><br><strong>Brand:</strong> <?php echo htmlspecialchars($product['brand'], ENT_QUOTES, 'UTF-8'); ?><br><strong>Price:</strong> <?php echo htmlspecialchars(store_format_money((float) $product['price']), ENT_QUOTES, 'UTF-8'); ?></p>
+                                                        <p><strong>Stock status:</strong> <?php echo htmlspecialchars((string) $product['stock_status'], ENT_QUOTES, 'UTF-8'); ?><br><strong>Suggested stock:</strong> <?php echo (int) $product['suggested_stock']; ?><br><strong>Estimated cost:</strong> <?php echo htmlspecialchars((string) $product['cost_display'], ENT_QUOTES, 'UTF-8'); ?><br><strong>Estimated profit:</strong> <?php echo htmlspecialchars((string) $product['profit_display'], ENT_QUOTES, 'UTF-8'); ?><br><strong>Reservations:</strong> <?php echo (int) $product['reservations']; ?></p>
+                                                        <p><strong>Current total stock:</strong> <?php echo (int) $product['stock']; ?> units<br><strong>Size standard:</strong> <?php echo $size_stock['standard'] === '' ? 'Not applicable' : htmlspecialchars(store_size_standard_label($size_stock['standard']), ENT_QUOTES, 'UTF-8'); ?></p>
+                                                        <?php if ($size_stock['standard'] !== ''): ?>
+                                                        <p><strong>Available sizes:</strong> <?php echo htmlspecialchars(implode(', ', array_map('strval', (array) ($product['size_standards'][$size_stock['standard']] ?? array()))), ENT_QUOTES, 'UTF-8'); ?></p>
+                                                        <?php if ($size_stock['configured']): ?>
+                                                            <div class="table-wrap"><table class="data-table"><thead><tr><th><?php echo htmlspecialchars($size_stock['standard'], ENT_QUOTES, 'UTF-8'); ?> size</th><th>Remaining stock</th></tr></thead><tbody><?php foreach ($size_stock['rows'] as $size_row): ?><tr><td><?php echo htmlspecialchars((string) $size_row['size'], ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo (int) $size_row['quantity']; ?> units<?php echo (int) $size_row['quantity'] === 0 ? ' · Out of stock' : ''; ?></td></tr><?php endforeach; ?></tbody><tfoot><tr><th>Total remaining stock</th><th><?php echo array_sum(array_column($size_stock['rows'], 'quantity')); ?> units</th></tr></tfoot></table></div>
+                                                        <?php else: ?><p class="backoffice-size-notice"><?php echo htmlspecialchars($size_stock['reason'], ENT_QUOTES, 'UTF-8'); ?> Current total stock has been preserved; no size quantities have been guessed.</p><?php endif; ?>
+                                                        <details class="backoffice-more-filters"><summary><?php echo $size_stock['configured'] ? 'Edit size stock' : 'Configure size stock'; ?></summary>
+                                                            <p class="field-note">Allocate the current available total across the listed sizes. Other size standards represent these same variants in the same order.</p>
+                                                            <form method="POST" class="contact-form" data-size-allocation-form data-target-stock="<?php echo (int) $product['stock']; ?>">
+                                                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(storefront_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
+                                                                <input type="hidden" name="inventory_action" value="save_size_stock">
+                                                                <input type="hidden" name="product_id" value="<?php echo (int) $product['id']; ?>">
+                                                                <div class="backoffice-size-inputs">
+                                                                    <?php foreach ((array) ($product['size_standards'][$size_stock['standard']] ?? array()) as $index => $size): ?>
+                                                                        <div class="field"><label for="size-<?php echo (int) $product['id']; ?>-<?php echo (int) $index; ?>"><?php echo htmlspecialchars(store_size_standard_label($size_stock['standard']) . ' ' . $size, ENT_QUOTES, 'UTF-8'); ?></label><input type="number" id="size-<?php echo (int) $product['id']; ?>-<?php echo (int) $index; ?>" name="quantities[<?php echo (int) $index; ?>]" min="0" step="1" value="<?php echo $size_stock['configured'] ? (int) $size_stock['rows'][$index]['quantity'] : ''; ?>" required></div>
+                                                                    <?php endforeach; ?>
+                                                                </div>
+                                                                <p class="field-note" role="status">Allocated: <strong data-allocation-total>0</strong> / <?php echo (int) $product['stock']; ?> current units</p>
+                                                                <button type="submit" class="button button-dark">Save size stock</button>
+                                                            </form>
+                                                        </details>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </dialog>
+                                        </td>
                                         <td>
                                             <div class="button-row">
                                                 <a href="inventory.php?edit=<?php echo (int) $product['id']; ?>#productForm" class="button button-light">Edit</a>
+                                                <button type="button" class="button button-light" data-size-dialog-open="<?php echo $size_dialog_id; ?>">View Details</button>
                                                 <form method="POST" class="inline-form">
                                                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(storefront_csrf_token(), ENT_QUOTES, 'UTF-8'); ?>">
                                                     <input type="hidden" name="inventory_action" value="delete_product">
@@ -261,6 +303,28 @@ backoffice_render_shell_start(
                     </div>
                     <?php backoffice_render_pagination($product_pagination, 'productRecords'); ?>
                 </article>
+
+                <script>
+                document.querySelectorAll('[data-size-dialog-open]').forEach(function (button) {
+                    const dialog = document.getElementById(button.dataset.sizeDialogOpen);
+                    button.addEventListener('click', function () { if (dialog && !dialog.open) dialog.showModal(); });
+                    dialog?.addEventListener('close', function () { button.focus(); });
+                });
+                document.querySelectorAll('[data-size-dialog-close]').forEach(function (button) {
+                    button.addEventListener('click', function () { button.closest('dialog')?.close(); });
+                });
+                document.querySelectorAll('[data-size-allocation-form]').forEach(function (form) {
+                    const inputs = Array.from(form.querySelectorAll('input[name^="quantities["]'));
+                    const total = form.querySelector('[data-allocation-total]');
+                    const update = function () {
+                        const allocated = inputs.reduce(function (sum, input) { return sum + (Number(input.value) || 0); }, 0);
+                        total.textContent = String(allocated);
+                        total.parentElement.classList.toggle('is-invalid', allocated !== Number(form.dataset.targetStock));
+                    };
+                    inputs.forEach(function (input) { input.addEventListener('input', update); });
+                    update();
+                });
+                </script>
 
                 <article class="table-card surface-card" id="stockHistory">
                     <span class="eyebrow">Inventory history logs</span>

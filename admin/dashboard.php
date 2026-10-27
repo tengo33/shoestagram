@@ -196,7 +196,7 @@ backoffice_render_shell_start(
                                         <td><?php echo number_format((float) $row['optimal_price'], 2); ?></td>
                                         <td><span class="status-pill status-<?php echo strtolower($row['price_action']); ?>"><?php echo htmlspecialchars($row['price_action'], ENT_QUOTES, 'UTF-8'); ?></span></td>
                                         <td><?php echo number_format((float) $row['forecast_revenue_optimal'], 2); ?></td>
-                                        <td><details class="table-details"><summary>View recommendation</summary><div><?php echo htmlspecialchars((string) $row['improvement'], ENT_QUOTES, 'UTF-8'); ?></div></details></td>
+                                        <td><details class="table-details" data-detail-title="Pricing recommendation"><summary>View recommendation</summary><div><p><?php echo htmlspecialchars((string) $row['improvement'], ENT_QUOTES, 'UTF-8'); ?></p></div></details></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
