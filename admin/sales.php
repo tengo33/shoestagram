@@ -7,15 +7,25 @@ require_once '../backoffice-layout.php';
 backoffice_require_role(array('admin'));
 backoffice_handle_promotion_update('admin');
 $filters = array(
-    'date_from' => trim((string) ($_GET['date_from'] ?? '')),
-    'date_to' => trim((string) ($_GET['date_to'] ?? '')),
+    'search' => backoffice_query_text('search'),
+    'date_from' => backoffice_query_text('date_from', 10),
+    'date_to' => backoffice_query_text('date_to', 10),
     'product_id' => (int) ($_GET['product_id'] ?? 0),
-    'source' => trim((string) ($_GET['source'] ?? '')),
-    'channel' => trim((string) ($_GET['channel'] ?? '')),
+    'source' => backoffice_query_text('source', 20),
+    'channel' => backoffice_query_text('channel', 20),
+    'sort' => backoffice_query_text('sort', 30),
 );
 $stats = backoffice_get_stats($conn);
 $all_transactions = get_admin_dynamic_transactions(0);
 $filtered_transactions = backoffice_filter_transactions($all_transactions, $filters);
+if (in_array($filters['sort'], array('oldest', 'amount_high', 'amount_low'), true)) {
+    usort($filtered_transactions, function ($left, $right) use ($filters) {
+        if ($filters['sort'] === 'oldest') return strcmp((string) $left['created_at'], (string) $right['created_at']);
+        $amount_order = (float) $left['amount'] <=> (float) $right['amount'];
+        return ($filters['sort'] === 'amount_high' ? -$amount_order : $amount_order)
+            ?: strcmp((string) $right['created_at'], (string) $left['created_at']);
+    });
+}
 $channel_summary = backoffice_summarize_transaction_channels($filtered_transactions);
 $channel_chart = array(
     array(
@@ -74,6 +84,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'pdf') {
         'scope_label' => 'Completed-sales summary with filtered system and historical transaction detail',
         'generated_at' => 'now',
         'filters' => array(
+            array('label' => 'Search', 'value' => $filters['search'] !== '' ? $filters['search'] : 'All matching records'),
             array('label' => 'Report period', 'value' => $date_from_label . ' to ' . $date_to_label),
             array('label' => 'Product', 'value' => $product_label),
             array('label' => 'Data source', 'value' => $source_label),
@@ -108,34 +119,16 @@ backoffice_render_shell_start(
     'System-created transactions and legitimate historical entries share one analytics view while retaining separate source labels.',
     array(
         array('href' => 'manual-sales.php', 'label' => 'Historical sales', 'class' => 'button-dark'),
-        array('href' => 'sales.php?export=pdf&date_from=' . urlencode($filters['date_from']) . '&date_to=' . urlencode($filters['date_to']) . '&product_id=' . urlencode((string) $filters['product_id']) . '&source=' . urlencode($filters['source']) . '&channel=' . urlencode($filters['channel']), 'label' => 'Export PDF', 'class' => 'button-light'),
+        array('href' => 'sales.php?export=pdf&search=' . urlencode($filters['search']) . '&date_from=' . urlencode($filters['date_from']) . '&date_to=' . urlencode($filters['date_to']) . '&product_id=' . urlencode((string) $filters['product_id']) . '&source=' . urlencode($filters['source']) . '&channel=' . urlencode($filters['channel']) . '&sort=' . urlencode($filters['sort']), 'label' => 'Export PDF', 'class' => 'button-light'),
     )
 );
 ?>
                 <article class="admin-card surface-card">
                     <span class="eyebrow">Filters</span>
-                    <h2 class="display-font">Date range and product filters.</h2>
-                    <form method="GET" class="contact-form">
-                        <div class="form-grid">
-                            <div class="field">
-                                <label for="date_from">Date from</label>
-                                <input type="date" id="date_from" name="date_from" value="<?php echo htmlspecialchars($filters['date_from'], ENT_QUOTES, 'UTF-8'); ?>">
-                            </div>
-                            <div class="field">
-                                <label for="date_to">Date to</label>
-                                <input type="date" id="date_to" name="date_to" value="<?php echo htmlspecialchars($filters['date_to'], ENT_QUOTES, 'UTF-8'); ?>">
-                            </div>
-                            <div class="field">
-                                <label for="product_id">Product</label>
-                                <select id="product_id" name="product_id">
-                                    <option value="0">All products</option>
-                                    <?php foreach ($stats['products'] as $product): ?>
-                                        <option value="<?php echo (int) $product['id']; ?>"<?php echo (int) $filters['product_id'] === (int) $product['id'] ? ' selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
+                    <h2 class="display-font">Find an order, product, or customer.</h2>
+                    <form method="GET" class="contact-form backoffice-filter-form" role="search">
+                        <div class="backoffice-filter-grid">
+                            <div class="field"><label for="sales_search">Search sales</label><input type="search" id="sales_search" name="search" value="<?php echo htmlspecialchars($filters['search'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search order, product, or customer..."></div>
                             <div class="field">
                                 <label for="source">Data source</label>
                                 <select id="source" name="source">
@@ -152,7 +145,13 @@ backoffice_render_shell_start(
                                     <option value="ONLINE"<?php echo $filters['channel'] === 'ONLINE' ? ' selected' : ''; ?>>Online</option>
                                 </select>
                             </div>
+                            <div class="field"><label for="sales_sort">Sort</label><select id="sales_sort" name="sort"><option value="">Latest first</option><option value="oldest"<?php echo $filters['sort'] === 'oldest' ? ' selected' : ''; ?>>Oldest first</option><option value="amount_high"<?php echo $filters['sort'] === 'amount_high' ? ' selected' : ''; ?>>Highest amount</option><option value="amount_low"<?php echo $filters['sort'] === 'amount_low' ? ' selected' : ''; ?>>Lowest amount</option></select></div>
                         </div>
+                        <details class="backoffice-more-filters"<?php echo $filters['date_from'] !== '' || $filters['date_to'] !== '' || $filters['product_id'] > 0 ? ' open' : ''; ?>><summary>More filters</summary><div class="backoffice-filter-grid">
+                            <div class="field"><label for="date_from">Date from</label><input type="date" id="date_from" name="date_from" value="<?php echo htmlspecialchars($filters['date_from'], ENT_QUOTES, 'UTF-8'); ?>"></div>
+                            <div class="field"><label for="date_to">Date to</label><input type="date" id="date_to" name="date_to" value="<?php echo htmlspecialchars($filters['date_to'], ENT_QUOTES, 'UTF-8'); ?>"></div>
+                            <div class="field"><label for="product_id">Product</label><select id="product_id" name="product_id"><option value="0">All products</option><?php foreach ($stats['products'] as $product): ?><option value="<?php echo (int) $product['id']; ?>"<?php echo (int) $filters['product_id'] === (int) $product['id'] ? ' selected' : ''; ?>><?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></div>
+                        </div></details>
                         <div class="button-row">
                             <button type="submit" class="button button-dark">Apply filters</button>
                             <a href="sales.php" class="button button-light">Reset</a>
@@ -277,7 +276,7 @@ backoffice_render_shell_start(
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (empty($filtered_transactions)): ?><tr><td colspan="8">No sales match these filters.</td></tr><?php endif; ?>
+                                <?php if (empty($filtered_transactions)): ?><tr><td colspan="8">No matching records found.</td></tr><?php endif; ?>
                                 <?php foreach ($filtered_transactions as $transaction): ?>
                                     <?php $sale_time = backoffice_manila_datetime($transaction['created_at'] ?? ''); ?>
                                     <tr>

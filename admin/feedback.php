@@ -7,13 +7,16 @@ require_once '../backoffice-layout.php';
 backoffice_require_role(array('admin'));
 backoffice_handle_review_update('admin');
 $stats = backoffice_get_stats($conn);
-$feedback_reviews = $stats['reviews'];
+$feedback_search = backoffice_query_text('search');
+$review_status_filter = backoffice_query_text('review_status', 30);
+$feedback_reviews = backoffice_filter_feedback_reviews($stats['reviews'], $feedback_search, $review_status_filter);
 usort($feedback_reviews, function ($left, $right) {
     $date = strcmp((string) ($right['created_at'] ?? ''), (string) ($left['created_at'] ?? ''));
     return $date !== 0 ? $date : strcmp((string) ($right['id'] ?? ''), (string) ($left['id'] ?? ''));
 });
 $review_pagination = backoffice_paginate_rows($feedback_reviews, 'review_page', 10);
 $feedback_messages = store_state_get_messages();
+$feedback_messages = backoffice_filter_feedback_messages($feedback_messages, $feedback_search);
 usort($feedback_messages, function ($left, $right) {
     $date = strcmp((string) ($right['created_at'] ?? ''), (string) ($left['created_at'] ?? ''));
     return $date !== 0 ? $date : strcmp((string) ($right['id'] ?? ''), (string) ($left['id'] ?? ''));
@@ -33,16 +36,17 @@ backoffice_render_shell_start(
     )
 );
 ?>
+                <article class="admin-card surface-card"><span class="eyebrow">Find feedback</span><form method="GET" class="contact-form backoffice-filter-form" role="search"><div class="backoffice-filter-grid"><div class="field"><label for="feedback_search">Search reviews and messages</label><input type="search" id="feedback_search" name="search" value="<?php echo htmlspecialchars($feedback_search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search customer, product, or comment..."></div><div class="field"><label for="review_status">Review status</label><select id="review_status" name="review_status"><option value="">All reviews</option><?php foreach (store_state_review_statuses() as $status): ?><option value="<?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $review_status_filter === $status ? ' selected' : ''; ?>><?php echo htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></div></div><p class="field-note">Review status applies only to reviews; text search also checks customer messages.</p><div class="button-row"><button type="submit" class="button button-dark">Search / filter</button><a href="feedback.php" class="button button-light">Clear filters</a></div></form></article>
                 <div class="feedback-sections">
                     <?php backoffice_render_review_management($feedback_reviews, $review_pagination); ?>
-                    <details class="admin-secondary-panel"<?php echo isset($_GET['message_page']) ? ' open' : ''; ?>>
+                    <details class="admin-secondary-panel"<?php echo isset($_GET['message_page']) || $feedback_search !== '' ? ' open' : ''; ?>>
                         <summary>View customer messages</summary>
                         <div class="admin-secondary-content">
                     <article class="admin-card surface-card" id="messages">
                         <span class="eyebrow">Support inbox</span>
                         <h2 class="display-font">Customer messages, newest first.</h2>
                         <div class="admin-alerts">
-                            <?php if (empty($feedback_messages)): ?><p>No customer messages yet.</p><?php endif; ?>
+                            <?php if (empty($feedback_messages)): ?><p>No matching records found.</p><?php endif; ?>
                             <?php foreach ($feedback_messages as $message): ?>
                                 <article class="alert-card info">
                                     <i class="fas fa-envelope"></i>

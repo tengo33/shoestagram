@@ -87,6 +87,20 @@ function store_transaction_counts_for_analytics($transaction)
         || !empty($transaction['counts_for_analytics']);
 }
 
+function store_transaction_matches_search($transaction, $search)
+{
+    $search = trim((string) $search);
+    if ($search === '') return true;
+    $fields = array(
+        $transaction['reference'] ?? '',
+        $transaction['customer'] ?? '',
+        $transaction['product_name'] ?? '',
+        $transaction['channel'] ?? '',
+        $transaction['transaction_type'] ?? '',
+    );
+    return stripos(implode(' ', array_map('strval', $fields)), $search) !== false;
+}
+
 function store_get_product_import_coverage($productId)
 {
     return database_fetch_one(
@@ -124,6 +138,14 @@ function store_get_manual_sales($filters = array(), $limit = 0, $offset = 0)
     $where = array("hs.source = 'manual'");
     $types = '';
     $params = array();
+
+    $search = substr(trim((string) ($filters['search'] ?? '')), 0, 120);
+    if ($search !== '') {
+        $where[] = '(p.name LIKE ? OR p.brand LIKE ? OR hs.external_reference LIKE ? OR hs.notes LIKE ?)';
+        $needle = '%' . $search . '%';
+        $types .= 'ssss';
+        array_push($params, $needle, $needle, $needle, $needle);
+    }
 
     $month = trim((string) ($filters['month'] ?? ''));
     $has_month = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month) === 1;
@@ -3833,12 +3855,14 @@ function store_get_sales_history($filters = array())
     $date_to = trim((string) ($filters['date_to'] ?? ''));
     $source = strtolower(trim((string) ($filters['source'] ?? '')));
     $channel = strtoupper(trim((string) ($filters['channel'] ?? '')));
+    $search = trim((string) ($filters['search'] ?? ''));
     $combined = array();
 
     foreach (get_admin_dynamic_transactions(0) as $transaction) {
         if (($transaction['status'] ?? '') !== 'Completed' || !store_transaction_counts_for_analytics($transaction)) {
             continue;
         }
+        if (!store_transaction_matches_search($transaction, $search)) continue;
 
         $date = substr((string) ($transaction['created_at'] ?? ''), 0, 10);
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
@@ -3921,6 +3945,7 @@ function store_get_product_sales_summary($filters = array())
         if (($transaction['status'] ?? '') !== 'Completed' || !store_transaction_counts_for_analytics($transaction)) {
             continue;
         }
+        if (!store_transaction_matches_search($transaction, $history_filters['search'] ?? '')) continue;
 
         $date = substr((string) ($transaction['created_at'] ?? ''), 0, 10);
         if (($history_filters['date_from'] ?? '') !== '' && $date < $history_filters['date_from']) {
@@ -4029,9 +4054,13 @@ function store_get_inventory_snapshot()
 function store_get_price_analytics($filters = array())
 {
     $selected_product_id = isset($filters['product_id']) ? (int) $filters['product_id'] : 0;
+    $search = substr(trim((string) ($filters['search'] ?? '')), 0, 120);
     $category = strtolower(trim((string) ($filters['category'] ?? '')));
     $brand = strtolower(trim((string) ($filters['brand'] ?? '')));
-    $products = array_values(array_filter(get_store_products(), function ($product) use ($selected_product_id, $category, $brand) {
+    $products = array_values(array_filter(get_store_products(), function ($product) use ($selected_product_id, $search, $category, $brand) {
+        if ($search !== '' && stripos((string) $product['name'] . ' ' . (string) $product['brand'], $search) === false) {
+            return false;
+        }
         if ($selected_product_id > 0 && (int) $product['id'] !== $selected_product_id) {
             return false;
         }

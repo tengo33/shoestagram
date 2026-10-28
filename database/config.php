@@ -596,6 +596,11 @@ function database_ensure_schema($host, $user, $password, $database, $port = 3306
     }
 
     @mysqli_set_charset($connection, 'utf8mb4');
+    // MySQL TIMESTAMP values are stored as instants. Read and write them in
+    // Philippine time so existing admin date filters and displays agree.
+    if (!@mysqli_query($connection, "SET time_zone = '+08:00'")) {
+        database_startup_error('Unable to set the MySQL session time zone.');
+    }
     return $connection;
 }
 
@@ -1403,10 +1408,10 @@ function database_get_activity_log_page($connection, $filters = array(), $page =
         $params[] = $date_to . ' 23:59:59';
     }
     if ($search !== '') {
-        $where[] = '(user_name LIKE ? OR user_email LIKE ? OR description LIKE ?)';
+        $where[] = '(user_name LIKE ? OR user_email LIKE ? OR activity_type LIKE ? OR description LIKE ?)';
         $needle = '%' . $search . '%';
-        $types .= 'sss';
-        array_push($params, $needle, $needle, $needle);
+        $types .= 'ssss';
+        array_push($params, $needle, $needle, $needle, $needle);
     }
     if (in_array($role, array('admin', 'staff', 'customer'), true)) {
         $where[] = 'user_role = ?';
@@ -1769,10 +1774,20 @@ function database_get_inventory_logs($connection, $limit = 40)
     );
 }
 
-function database_get_inventory_logs_page($connection, $requested_page = 1, $per_page = 20)
+function database_get_inventory_logs_page($connection, $requested_page = 1, $per_page = 20, $filters = array())
 {
     $per_page = max(1, min(100, (int) $per_page));
-    $count = database_fetch_one($connection, 'SELECT COUNT(*) AS total FROM inventory_logs');
+    $search = substr(trim((string) ($filters['search'] ?? '')), 0, 120);
+    $where = '';
+    $types = '';
+    $params = array();
+    if ($search !== '') {
+        $where = ' WHERE (p.name LIKE ? OR l.action_type LIKE ? OR l.actor_name LIKE ? OR l.note LIKE ?)';
+        $types = 'ssss';
+        $needle = '%' . $search . '%';
+        $params = array($needle, $needle, $needle, $needle);
+    }
+    $count = database_fetch_one($connection, 'SELECT COUNT(*) AS total FROM inventory_logs l LEFT JOIN products p ON p.id = l.product_id' . $where, $types, $params);
     $total = (int) ($count['total'] ?? 0);
     $pages = max(1, (int) ceil($total / $per_page));
     $page = min($pages, max(1, (int) $requested_page));
@@ -1781,8 +1796,9 @@ function database_get_inventory_logs_page($connection, $requested_page = 1, $per
         "SELECT l.*, p.name AS product_name
          FROM inventory_logs l
          LEFT JOIN products p ON p.id = l.product_id
+         " . $where . "
          ORDER BY COALESCE(l.event_date, DATE(l.created_at)) DESC, l.created_at DESC, l.id DESC
-         LIMIT " . $per_page . " OFFSET " . $offset);
+         LIMIT " . $per_page . " OFFSET " . $offset, $types, $params);
     return array('rows' => $rows, 'page' => $page, 'pages' => $pages, 'total' => $total, 'per_page' => $per_page, 'key' => 'log_page');
 }
 

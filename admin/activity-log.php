@@ -7,12 +7,12 @@ require_once '../backoffice-layout.php';
 backoffice_require_role(array('admin'));
 
 $filters = array(
-    'date_from' => trim((string) ($_GET['date_from'] ?? '')),
-    'date_to' => trim((string) ($_GET['date_to'] ?? '')),
-    'search' => trim((string) ($_GET['search'] ?? '')),
-    'role' => strtolower(trim((string) ($_GET['role'] ?? ''))),
-    'activity_type' => trim((string) ($_GET['activity_type'] ?? '')),
-    'status' => trim((string) ($_GET['status'] ?? '')),
+    'date_from' => backoffice_query_text('date_from', 10),
+    'date_to' => backoffice_query_text('date_to', 10),
+    'search' => backoffice_query_text('search'),
+    'role' => strtolower(backoffice_query_text('role', 20)),
+    'activity_type' => backoffice_query_text('activity_type', 80),
+    'status' => backoffice_query_text('status', 20),
 );
 $activity_page = database_get_activity_log_page($conn, $filters, (int) ($_GET['page'] ?? 1), 10);
 
@@ -42,8 +42,8 @@ backoffice_render_shell_start(
                                 <input type="date" id="date_to" name="date_to" value="<?php echo htmlspecialchars($filters['date_to'], ENT_QUOTES, 'UTF-8'); ?>">
                             </div>
                             <div class="field">
-                                <label for="search">User, email, or detail</label>
-                                <input type="search" id="search" name="search" value="<?php echo htmlspecialchars($filters['search'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search activity">
+                                <label for="search">Search activity</label>
+                                <input type="search" id="search" name="search" value="<?php echo htmlspecialchars($filters['search'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search user or activity details...">
                             </div>
                             <div class="field">
                                 <label for="role">Role</label>
@@ -102,7 +102,7 @@ backoffice_render_shell_start(
                             </thead>
                             <tbody>
                                 <?php if (empty($activity_page['rows'])): ?>
-                                    <tr><td colspan="6">No activity matches the selected filters.</td></tr>
+                                    <tr><td colspan="6">No matching records found.</td></tr>
                                 <?php endif; ?>
                                 <?php foreach ($activity_page['rows'] as $activity): ?>
                                     <?php
@@ -111,7 +111,7 @@ backoffice_render_shell_start(
                                     $activity_time = backoffice_manila_datetime($activity['created_at'] ?? '');
                                     ?>
                                     <tr>
-                                        <td><?php echo $activity_time ? htmlspecialchars($activity_time->format('M j, Y'), ENT_QUOTES, 'UTF-8') . '<br><small>' . htmlspecialchars($activity_time->format('g:i A'), ENT_QUOTES, 'UTF-8') . '</small>' : 'Date unavailable'; ?></td>
+                                        <td><?php echo $activity_time ? htmlspecialchars($activity_time->format('F j, Y, g:i A'), ENT_QUOTES, 'UTF-8') . '<br><small>Philippine time</small>' : 'Date unavailable'; ?></td>
                                         <td><?php echo htmlspecialchars((string) ($activity['user_name'] !== '' ? $activity['user_name'] : 'Unknown user'), ENT_QUOTES, 'UTF-8'); ?></td>
                                         <td><?php echo htmlspecialchars((string) ($activity['user_role'] !== '' ? backoffice_role_label($activity['user_role']) : 'Unknown'), ENT_QUOTES, 'UTF-8'); ?></td>
                                         <td><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', (string) $activity['activity_type'])), ENT_QUOTES, 'UTF-8'); ?></td>

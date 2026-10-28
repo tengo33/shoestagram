@@ -8,6 +8,15 @@ backoffice_require_role(array('admin'));
 $stats = backoffice_get_stats($conn);
 $forecast = $stats['sales_projection'];
 $forecast_rows = $forecast['products'];
+$forecast_search = backoffice_query_text('search');
+$forecast_source = backoffice_query_text('source', 20);
+$forecast_rows = array_values(array_filter($forecast_rows, function ($product) use ($forecast_search, $forecast_source) {
+    if ($forecast_search !== '' && stripos((string) ($product['name'] ?? ''), $forecast_search) === false) return false;
+    $is_sample = stripos((string) ($product['data_source'] ?? ''), 'Sample') !== false;
+    if ($forecast_source === 'sample' && !$is_sample) return false;
+    if ($forecast_source === 'actual' && $is_sample) return false;
+    return true;
+}));
 $forecast_pagination = backoffice_paginate_rows($forecast_rows);
 $forecast_chart_rows = array_slice($forecast['products'], 0, 8);
 $limited_history_count = count(array_filter($forecast['products'], function ($product) {
@@ -106,6 +115,7 @@ backoffice_render_shell_start(
                 <article class="table-card surface-card" id="forecastRecords">
                     <span class="eyebrow">Forecast detail</span>
                     <h2 class="display-font">Forecast source, history quality, and inventory action by product.</h2>
+                    <form method="GET" class="contact-form backoffice-filter-form" role="search"><div class="backoffice-filter-grid"><div class="field"><label for="forecast_search">Search products</label><input type="search" id="forecast_search" name="search" value="<?php echo htmlspecialchars($forecast_search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search forecast product..."></div><div class="field"><label for="forecast_source">Data source</label><select id="forecast_source" name="source"><option value="">All sources</option><option value="actual"<?php echo $forecast_source === 'actual' ? ' selected' : ''; ?>>Actual sales</option><option value="sample"<?php echo $forecast_source === 'sample' ? ' selected' : ''; ?>>Sample / development</option></select></div></div><p class="field-note">These controls filter product records below; forecast charts and overall totals remain unchanged.</p><div class="button-row"><button type="submit" class="button button-dark">Search / filter</button><a href="forecasting.php#forecastRecords" class="button button-light">Clear filters</a></div></form>
                     <div class="table-wrap">
                         <table class="data-table">
                             <thead>
@@ -120,7 +130,7 @@ backoffice_render_shell_start(
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (empty($forecast_rows)): ?><tr><td colspan="7">No product forecasts are available.</td></tr><?php endif; ?>
+                                <?php if (empty($forecast_rows)): ?><tr><td colspan="7">No matching records found.</td></tr><?php endif; ?>
                                 <?php foreach ($forecast_rows as $product): ?>
                                     <?php $first_period = !empty($product['forecast_periods']) ? $product['forecast_periods'][0] : array(); ?>
                                     <tr>

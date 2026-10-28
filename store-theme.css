@@ -6934,8 +6934,17 @@ h6 {
     }
 }
 
+/* Shared, compact record filters and inventory size-stock dialog. */
+.backoffice-filter-form { margin: 20px 0; }
+.backoffice-filter-grid {
+    display: grid;
+    grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(130px, 1fr));
+    gap: 14px;
+    align-items: end;
+}
 .backoffice-more-filters { margin: 14px 0; }
 .backoffice-more-filters > summary { cursor: pointer; color: var(--olive, #46513d); font-weight: 700; }
+.backoffice-more-filters > .backoffice-filter-grid { margin-top: 14px; }
 .backoffice-size-dialog {
     position: fixed;
     width: min(560px, calc(100vw - 28px));
@@ -7041,10 +7050,32 @@ h6 {
 .backoffice-detail-cell { display: grid; justify-items: start; gap: 7px; max-width: 220px; }
 .backoffice-detail-preview { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .backoffice-detail-trigger { white-space: nowrap; }
-.backoffice-detail-dialog .reservation-update-form,
-.reservation-details .reservation-update-form { display: grid; margin-top: 20px; }
-
+.backoffice-detail-dialog .reservation-update-form { display: grid; margin-top: 20px; }
+.reservation-details .reservation-update-form { display: grid; }
+@media (max-width: 900px) {
+    .backoffice-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 560px) {
+    .backoffice-filter-grid,
     .backoffice-size-inputs { grid-template-columns: 1fr; }
     .backoffice-size-dialog .section-head { flex-wrap: wrap; }
+}
+
+/* Keep Historical Sales row actions aligned inside the scrollable table. */
+#historicalRecords .table-wrap { overflow-x: auto; }
+#historicalRecords .data-table { min-width: 900px; }
+#historicalRecords .compact-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 7px;
+    min-width: max-content;
+}
+#historicalRecords .compact-actions .inline-form { display: inline-flex; margin: 0; width: auto; }
+#historicalRecords .compact-actions .button { flex: none; white-space: nowrap; }
+@media (max-width: 560px) {
+    #historicalRecords .data-table { min-width: 790px; }
+    #historicalRecords .compact-actions { display: grid; grid-template-columns: 1fr; min-width: 82px; }
+    #historicalRecords .compact-actions .inline-form,
+    #historicalRecords .compact-actions .button { width: 100%; justify-content: center; }
 }

@@ -19,6 +19,15 @@ function backoffice_role_label($role)
     return 'Team Member';
 }
 
+function backoffice_query_text($key, $max_length = 120)
+{
+    $value = $_GET[$key] ?? '';
+    if (!is_scalar($value)) return '';
+    $text = trim((string) $value);
+    $length = max(1, (int) $max_length);
+    return function_exists('mb_substr') ? mb_substr($text, 0, $length, 'UTF-8') : substr($text, 0, $length);
+}
+
 function backoffice_logout_href($role)
 {
     return '../login/logout.php?redirect=login.php';
@@ -601,6 +610,91 @@ function backoffice_paginate_transaction_lines(&$rows, $page_key = 'page', $per_
     }
     $rows = $visible;
     return $pagination;
+}
+
+function backoffice_filter_inventory_products($products, $filters = array())
+{
+    $search = trim((string) ($filters['search'] ?? ''));
+    $stock = (string) ($filters['stock'] ?? '');
+    $category = (string) ($filters['category'] ?? '');
+    $brand = (string) ($filters['brand'] ?? '');
+    $sort = (string) ($filters['sort'] ?? '');
+    $products = array_values(array_filter((array) $products, function ($product) use ($search, $stock, $category, $brand) {
+        if ($search !== '' && stripos(implode(' ', array(
+            $product['name'] ?? '', $product['brand'] ?? '', get_store_category_label($product['category'] ?? ''), (string) ($product['id'] ?? '')
+        )), $search) === false) return false;
+        if ($category !== '' && ($product['category'] ?? '') !== $category) return false;
+        if ($brand !== '' && ($product['brand'] ?? '') !== $brand) return false;
+        if ($stock === 'out' && (int) ($product['stock'] ?? 0) !== 0) return false;
+        if ($stock === 'low' && ((int) ($product['stock'] ?? 0) === 0 || empty($product['is_low_stock']))) return false;
+        if ($stock === 'in' && ((int) ($product['stock'] ?? 0) === 0 || !empty($product['is_low_stock']))) return false;
+        return true;
+    }));
+    if (in_array($sort, array('stock_high', 'stock_low'), true)) {
+        usort($products, function ($left, $right) use ($sort) {
+            $stock_order = (int) $left['stock'] <=> (int) $right['stock'];
+            return ($sort === 'stock_high' ? -$stock_order : $stock_order)
+                ?: strcasecmp((string) $left['name'], (string) $right['name']);
+        });
+    }
+    return $products;
+}
+
+function backoffice_filter_staff_users($users, $filters = array())
+{
+    $search = (string) ($filters['search'] ?? '');
+    $status = (string) ($filters['status'] ?? '');
+    $sort = (string) ($filters['sort'] ?? '');
+    $users = array_values(array_filter((array) $users, function ($user) use ($search, $status) {
+        if ($search !== '' && stripos((string) ($user['fullname'] ?? '') . ' ' . (string) ($user['email'] ?? ''), $search) === false) return false;
+        $archived = database_user_is_archived($user);
+        if ($status === 'archived' && !$archived) return false;
+        if ($status === 'active' && ($archived || (int) ($user['is_active'] ?? 0) !== 1)) return false;
+        if ($status === 'inactive' && ($archived || (int) ($user['is_active'] ?? 0) !== 0)) return false;
+        return true;
+    }));
+    if ($sort === 'name') {
+        usort($users, function ($left, $right) { return strcasecmp((string) $left['fullname'], (string) $right['fullname']); });
+    }
+    return $users;
+}
+
+function backoffice_filter_feedback_reviews($reviews, $search = '', $status = '')
+{
+    return array_values(array_filter((array) $reviews, function ($review) use ($search, $status) {
+        if ($status !== '' && (string) ($review['status'] ?? 'Published') !== $status) return false;
+        return $search === '' || stripos(implode(' ', array(
+            $review['customer_name'] ?? '', $review['product_name'] ?? '', $review['comment'] ?? '', $review['order_id'] ?? ''
+        )), $search) !== false;
+    }));
+}
+
+function backoffice_filter_feedback_messages($messages, $search = '')
+{
+    return array_values(array_filter((array) $messages, function ($message) use ($search) {
+        return $search === '' || stripos(implode(' ', array(
+            $message['name'] ?? '', $message['email'] ?? '', $message['subject'] ?? '', $message['message'] ?? ''
+        )), $search) !== false;
+    }));
+}
+
+function backoffice_filter_reservations($orders, $filters = array())
+{
+    return array_values(array_filter((array) $orders, function ($order) use ($filters) {
+        if (($filters['status'] ?? '') !== '' && (string) ($order['status'] ?? '') !== $filters['status']) return false;
+        if (($filters['payment_status'] ?? '') !== '' && (string) ($order['payment_status'] ?? '') !== $filters['payment_status']) return false;
+        $reserved_at = backoffice_manila_datetime($order['created_at'] ?? '', true);
+        if (($filters['reserved_date'] ?? '') !== '' && (!$reserved_at || $reserved_at->format('Y-m-d') !== $filters['reserved_date'])) return false;
+        $search = (string) ($filters['search'] ?? '');
+        if ($search !== '') {
+            $haystack = (string) ($order['checkout_id'] ?? '') . ' ' . (string) ($order['id'] ?? '') . ' ' . (string) ($order['customer_name'] ?? '') . ' ' . (string) ($order['customer_email'] ?? '');
+            foreach ($order['items'] ?? array() as $item) {
+                $haystack .= ' ' . (string) ($item['product_name'] ?? '');
+            }
+            if (stripos($haystack, $search) === false) return false;
+        }
+        return true;
+    }));
 }
 
 function backoffice_render_pagination($pagination, $anchor = '')
@@ -1224,7 +1318,7 @@ function backoffice_render_review_management($reviews, $pagination = null)
         <span class="eyebrow">Review moderation</span>
         <h2 class="display-font">Manage product reviews.</h2>
         <?php if (empty($reviews)): ?>
-            <p style="margin: 18px 0 0; color: var(--muted);">No customer reviews have been submitted yet.</p>
+            <p style="margin: 18px 0 0; color: var(--muted);">No matching records found.</p>
         <?php else: ?>
             <div class="admin-alerts">
                 <?php foreach ($reviews as $review): ?>
@@ -1276,8 +1370,9 @@ function backoffice_filter_transactions($transactions, $filters = array())
     $product_id = (int) ($filters['product_id'] ?? 0);
     $source = strtolower(trim((string) ($filters['source'] ?? '')));
     $channel = strtoupper(trim((string) ($filters['channel'] ?? '')));
+    $search = trim((string) ($filters['search'] ?? ''));
 
-    return array_values(array_filter($transactions, function ($transaction) use ($date_from, $date_to, $product_id, $source, $channel) {
+    return array_values(array_filter($transactions, function ($transaction) use ($date_from, $date_to, $product_id, $source, $channel, $search) {
         if (($transaction['status'] ?? '') === 'Completed' && !store_transaction_counts_for_analytics($transaction)) {
             return false;
         }
@@ -1311,6 +1406,10 @@ function backoffice_filter_transactions($transactions, $filters = array())
 
         if (in_array($channel, array('WALK-IN', 'ONLINE'), true)
             && store_state_channel_type($transaction['transaction_type'] ?? ($transaction['channel'] ?? 'ONLINE')) !== $channel) {
+            return false;
+        }
+
+        if (!store_transaction_matches_search($transaction, $search)) {
             return false;
         }
 

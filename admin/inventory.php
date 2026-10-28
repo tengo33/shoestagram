@@ -41,8 +41,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $stats = backoffice_get_stats($conn);
 $inventory_products = $stats['products'];
-$product_pagination = backoffice_paginate_rows($inventory_products, 'product_page');
-$inventory_log_page = database_get_inventory_logs_page($conn, (int) ($_GET['log_page'] ?? 1), 10);
+$inventory_filters = array(
+    'search' => backoffice_query_text('search'),
+    'stock' => backoffice_query_text('stock', 20),
+    'category' => backoffice_query_text('category', 80),
+    'brand' => backoffice_query_text('brand'),
+    'sort' => backoffice_query_text('sort', 30),
+);
+$inventory_brands = array_values(array_unique(array_map(function ($product) { return (string) $product['brand']; }, $inventory_products)));
+natcasesort($inventory_brands);
+$inventory_products = backoffice_filter_inventory_products($inventory_products, $inventory_filters);
+$inventory_per_page = (int) ($_GET['per_page'] ?? 10);
+if (!in_array($inventory_per_page, array(10, 20, 50), true)) $inventory_per_page = 10;
+$product_pagination = backoffice_paginate_rows($inventory_products, 'product_page', $inventory_per_page);
+$inventory_log_search = backoffice_query_text('log_search');
+$inventory_log_page = database_get_inventory_logs_page($conn, (int) ($_GET['log_page'] ?? 1), 10, array('search' => $inventory_log_search));
 $product_to_edit = $edit_id > 0 ? get_store_product_by_id($edit_id) : null;
 $product_size_standards_to_edit = store_normalize_size_standards(
     $product_to_edit['size_standards'] ?? array(),
@@ -219,6 +232,16 @@ backoffice_render_shell_start(
                 <article class="table-card surface-card" id="productRecords">
                     <span class="eyebrow">Live product table</span>
                     <h2 class="display-font">Every product and its current stock position.</h2>
+                    <form method="GET" class="contact-form backoffice-filter-form" role="search">
+                        <div class="backoffice-filter-grid">
+                            <div class="field"><label for="inventory_search">Search products</label><input type="search" id="inventory_search" name="search" value="<?php echo htmlspecialchars($inventory_filters['search'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search product, brand, category, or ID..."></div>
+                            <div class="field"><label for="inventory_stock">Stock status</label><select id="inventory_stock" name="stock"><option value="">All stock</option><option value="in"<?php echo $inventory_filters['stock'] === 'in' ? ' selected' : ''; ?>>In stock</option><option value="low"<?php echo $inventory_filters['stock'] === 'low' ? ' selected' : ''; ?>>Low stock</option><option value="out"<?php echo $inventory_filters['stock'] === 'out' ? ' selected' : ''; ?>>Out of stock</option></select></div>
+                            <div class="field"><label for="inventory_category">Category</label><select id="inventory_category" name="category"><option value="">All categories</option><?php foreach (get_store_categories() as $key => $label): if ($key === 'all') continue; ?><option value="<?php echo htmlspecialchars($key, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $inventory_filters['category'] === $key ? ' selected' : ''; ?>><?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></div>
+                            <div class="field"><label for="inventory_sort">Sort</label><select id="inventory_sort" name="sort"><option value="">Product name</option><option value="stock_high"<?php echo $inventory_filters['sort'] === 'stock_high' ? ' selected' : ''; ?>>Highest stock</option><option value="stock_low"<?php echo $inventory_filters['sort'] === 'stock_low' ? ' selected' : ''; ?>>Lowest stock</option></select></div>
+                        </div>
+                        <details class="backoffice-more-filters"<?php echo $inventory_filters['brand'] !== '' || $inventory_per_page !== 10 ? ' open' : ''; ?>><summary>More filters</summary><div class="backoffice-filter-grid"><div class="field"><label for="inventory_brand">Brand</label><select id="inventory_brand" name="brand"><option value="">All brands</option><?php foreach ($inventory_brands as $brand): ?><option value="<?php echo htmlspecialchars($brand, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $inventory_filters['brand'] === $brand ? ' selected' : ''; ?>><?php echo htmlspecialchars($brand, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></div><div class="field"><label for="inventory_per_page">Rows per page</label><select id="inventory_per_page" name="per_page"><?php foreach (array(10, 20, 50) as $count): ?><option value="<?php echo $count; ?>"<?php echo $inventory_per_page === $count ? ' selected' : ''; ?>><?php echo $count; ?></option><?php endforeach; ?></select></div></div></details>
+                        <div class="button-row"><button type="submit" class="button button-dark">Search / filter</button><a href="inventory.php#productRecords" class="button button-light">Clear filters</a></div>
+                    </form>
                     <div class="table-wrap">
                         <table class="data-table">
                             <thead>
@@ -233,7 +256,7 @@ backoffice_render_shell_start(
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (empty($inventory_products)): ?><tr><td colspan="7">No products are available yet.</td></tr><?php endif; ?>
+                                <?php if (empty($inventory_products)): ?><tr><td colspan="7">No matching records found. <a href="inventory.php#productRecords">Clear filters</a></td></tr><?php endif; ?>
                                 <?php foreach ($inventory_products as $product): ?>
                                     <?php $size_stock = store_size_stock_state($product); $size_dialog_id = 'sizeStock-' . (int) $product['id']; ?>
                                     <tr>
@@ -329,6 +352,7 @@ backoffice_render_shell_start(
                 <article class="table-card surface-card" id="stockHistory">
                     <span class="eyebrow">Inventory history logs</span>
                     <h2 class="display-font">Who updated stock and when.</h2>
+                    <form method="GET" class="contact-form backoffice-filter-form" role="search"><div class="backoffice-filter-grid"><div class="field"><label for="inventory_log_search">Search stock history</label><input type="search" id="inventory_log_search" name="log_search" value="<?php echo htmlspecialchars($inventory_log_search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search product, action, or staff..."></div></div><div class="button-row"><button type="submit" class="button button-dark">Search logs</button><a href="inventory.php#stockHistory" class="button button-light">Clear</a></div></form>
                     <div class="table-wrap">
                         <table class="data-table">
                             <thead>
@@ -339,11 +363,11 @@ backoffice_render_shell_start(
                                     <th>User</th>
                                     <th>Before</th>
                                     <th>After</th>
-                                    <th>Note</th>
+                                    <th>Details</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (empty($inventory_log_page['rows'])): ?><tr><td colspan="7">No stock changes have been recorded yet.</td></tr><?php endif; ?>
+                                <?php if (empty($inventory_log_page['rows'])): ?><tr><td colspan="7">No matching records found.</td></tr><?php endif; ?>
                                 <?php foreach ($inventory_log_page['rows'] as $log): ?>
                                     <?php $log_time = backoffice_manila_datetime($log['created_at'] ?? ''); ?>
                                     <tr>
@@ -355,11 +379,25 @@ backoffice_render_shell_start(
                                             <?php endif; ?>
                                         </td>
                                         <td><?php echo htmlspecialchars((string) ($log['product_name'] ?? 'Deleted product'), ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', (string) $log['action_type'])), ENT_QUOTES, 'UTF-8'); ?></td>
+                                        <td><?php echo htmlspecialchars(($log['action_type'] ?? '') === 'historical_restock_import' ? 'Historical import' : ucwords(str_replace('_', ' ', (string) $log['action_type'])), ENT_QUOTES, 'UTF-8'); ?></td>
                                         <td><?php echo htmlspecialchars((string) $log['actor_name'], ENT_QUOTES, 'UTF-8'); ?><br><small><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', (string) $log['actor_role'])), ENT_QUOTES, 'UTF-8'); ?></small></td>
                                         <td><?php echo empty($log['affects_live_stock']) ? 'Reference only' : (int) $log['stock_before']; ?></td>
                                         <td><?php echo empty($log['affects_live_stock']) ? 'No live change' : (int) $log['stock_after']; ?></td>
-                                        <td><?php if (trim((string) ($log['note'] ?? '')) !== ''): ?><details class="table-details"><summary><?php echo htmlspecialchars(function_exists('mb_strimwidth') ? mb_strimwidth((string) $log['note'], 0, 48, '…', 'UTF-8') : substr((string) $log['note'], 0, 48), ENT_QUOTES, 'UTF-8'); ?> <span>View</span></summary><div><?php echo nl2br(htmlspecialchars((string) $log['note'], ENT_QUOTES, 'UTF-8')); ?></div></details><?php else: ?>—<?php endif; ?></td>
+                                        <td><details class="table-details" data-detail-title="Inventory history details"><summary>View Details</summary><div>
+                                            <p><strong>Log ID:</strong> <?php echo (int) ($log['id'] ?? 0); ?></p>
+                                            <p><strong>Product:</strong> <?php echo htmlspecialchars((string) ($log['product_name'] ?? 'Deleted product'), ENT_QUOTES, 'UTF-8'); ?> (ID <?php echo (int) ($log['product_id'] ?? 0); ?>)</p>
+                                            <p><strong>Action:</strong> <?php echo htmlspecialchars(ucwords(str_replace('_', ' ', (string) ($log['action_type'] ?? ''))), ENT_QUOTES, 'UTF-8'); ?></p>
+                                            <p><strong>Actor:</strong> <?php echo htmlspecialchars((string) ($log['actor_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?> (<?php echo htmlspecialchars((string) ($log['actor_role'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>)</p>
+                                            <p><strong>Actor email:</strong> <?php echo htmlspecialchars((string) ($log['actor_email'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></p>
+                                            <p><strong>Recorded at:</strong> <?php echo $log_time ? htmlspecialchars($log_time->format('F j, Y, g:i A'), ENT_QUOTES, 'UTF-8') . ' PHT' : 'Date unavailable'; ?></p>
+                                            <p><strong>Historical event date:</strong> <?php echo !empty($log['event_date']) ? htmlspecialchars((string) $log['event_date'], ENT_QUOTES, 'UTF-8') : 'None'; ?></p>
+                                            <p><strong>Live stock:</strong> <?php echo empty($log['affects_live_stock']) ? 'Reference only — no live stock change' : 'Changed live stock'; ?></p>
+                                            <p><strong>Stock before / after:</strong> <?php echo (int) ($log['stock_before'] ?? 0); ?> / <?php echo (int) ($log['stock_after'] ?? 0); ?></p>
+                                            <p><strong>Quantity change:</strong> <?php echo (int) ($log['quantity_change'] ?? 0); ?></p>
+                                            <p><strong>External reference:</strong> <?php echo htmlspecialchars((string) (($log['external_reference'] ?? '') !== '' ? $log['external_reference'] : 'None'), ENT_QUOTES, 'UTF-8'); ?></p>
+                                            <p><strong>Import batch ID:</strong> <?php echo !empty($log['import_batch_id']) ? (int) $log['import_batch_id'] : 'None'; ?></p>
+                                            <p><strong>Note:</strong> <?php echo trim((string) ($log['note'] ?? '')) !== '' ? nl2br(htmlspecialchars((string) $log['note'], ENT_QUOTES, 'UTF-8')) : 'No note provided.'; ?></p>
+                                        </div></details></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>

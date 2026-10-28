@@ -9,33 +9,12 @@ backoffice_handle_order_update('admin');
 $stats = backoffice_get_stats($conn);
 $reservation_orders = store_group_checkout_orders($stats['orders']);
 $reservation_filters = array(
-    'search' => trim((string) ($_GET['search'] ?? '')),
-    'status' => trim((string) ($_GET['status'] ?? '')),
-    'payment_status' => trim((string) ($_GET['payment_status'] ?? '')),
-    'reserved_date' => trim((string) ($_GET['reserved_date'] ?? '')),
+    'search' => backoffice_query_text('search'),
+    'status' => backoffice_query_text('status', 40),
+    'payment_status' => backoffice_query_text('payment_status', 40),
+    'reserved_date' => backoffice_query_text('reserved_date', 10),
 );
-$reservation_orders = array_values(array_filter($reservation_orders, function ($order) use ($reservation_filters) {
-    if ($reservation_filters['status'] !== '' && (string) ($order['status'] ?? '') !== $reservation_filters['status']) {
-        return false;
-    }
-    if ($reservation_filters['payment_status'] !== '' && (string) ($order['payment_status'] ?? '') !== $reservation_filters['payment_status']) {
-        return false;
-    }
-    $reserved_at = backoffice_manila_datetime($order['created_at'] ?? '', true);
-    if ($reservation_filters['reserved_date'] !== '' && (!$reserved_at || $reserved_at->format('Y-m-d') !== $reservation_filters['reserved_date'])) {
-        return false;
-    }
-    if ($reservation_filters['search'] !== '') {
-        $haystack = (string) ($order['checkout_id'] ?? '') . ' ' . (string) ($order['customer_name'] ?? '') . ' ' . (string) ($order['customer_email'] ?? '');
-        foreach ($order['items'] ?? array() as $item) {
-            $haystack .= ' ' . (string) ($item['product_name'] ?? '');
-        }
-        if (stripos($haystack, $reservation_filters['search']) === false) {
-            return false;
-        }
-    }
-    return true;
-}));
+$reservation_orders = backoffice_filter_reservations($reservation_orders, $reservation_filters);
 $reservation_pagination = backoffice_paginate_rows($reservation_orders, 'page', 10);
 
 backoffice_render_head('Shoestagram | Admin Reservations');
@@ -105,7 +84,7 @@ backoffice_render_shell_start(
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (empty($reservation_orders)): ?><tr><td colspan="8">No reservations match these filters.</td></tr><?php endif; ?>
+                                <?php if (empty($reservation_orders)): ?><tr><td colspan="8">No matching records found.</td></tr><?php endif; ?>
                                 <?php foreach ($reservation_orders as $order): ?>
                                     <?php $reserved_at = backoffice_manila_datetime($order['created_at'] ?? '', true); ?>
                                     <?php $updated_at = backoffice_manila_datetime($order['updated_at'] ?? '', true); ?>

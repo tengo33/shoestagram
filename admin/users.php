@@ -140,6 +140,12 @@ $staff_total = count($staff_users);
 $active_staff = count(array_filter($staff_users, function ($user) {
     return (int) ($user['is_active'] ?? 0) === 1 && !database_user_is_archived($user);
 }));
+$staff_filters = array(
+    'search' => backoffice_query_text('search'),
+    'status' => backoffice_query_text('status', 20),
+    'sort' => backoffice_query_text('sort', 20),
+);
+$staff_users = backoffice_filter_staff_users($staff_users, $staff_filters);
 $staff_pagination = backoffice_paginate_rows($staff_users);
 
 backoffice_render_head('Shoestagram | Admin Users');
@@ -225,6 +231,7 @@ backoffice_render_shell_start(
                 <article class="table-card surface-card" id="staffRecords">
                     <span class="eyebrow">Staff list</span>
                     <h2 class="display-font">Current staff accounts and access.</h2>
+                    <form method="GET" class="contact-form backoffice-filter-form" role="search"><div class="backoffice-filter-grid"><div class="field"><label for="staff_search">Search staff</label><input type="search" id="staff_search" name="search" value="<?php echo htmlspecialchars($staff_filters['search'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search staff name or email..."></div><div class="field"><label for="staff_status">Status</label><select id="staff_status" name="status"><option value="">All statuses</option><option value="active"<?php echo $staff_filters['status'] === 'active' ? ' selected' : ''; ?>>Active</option><option value="inactive"<?php echo $staff_filters['status'] === 'inactive' ? ' selected' : ''; ?>>Inactive</option><option value="archived"<?php echo $staff_filters['status'] === 'archived' ? ' selected' : ''; ?>>Archived</option></select></div><div class="field"><label for="staff_sort">Sort</label><select id="staff_sort" name="sort"><option value="">Latest first</option><option value="name"<?php echo $staff_filters['sort'] === 'name' ? ' selected' : ''; ?>>Name A–Z</option></select></div></div><div class="button-row"><button type="submit" class="button button-dark">Search / filter</button><a href="users.php#staffRecords" class="button button-light">Clear filters</a></div></form>
                     <div class="table-wrap">
                         <table class="data-table">
                             <thead>
@@ -239,7 +246,7 @@ backoffice_render_shell_start(
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (empty($staff_users)): ?><tr><td colspan="7">No staff accounts have been created yet.</td></tr><?php endif; ?>
+                                <?php if (empty($staff_users)): ?><tr><td colspan="7">No matching records found. <a href="users.php#staffRecords">Clear filters</a></td></tr><?php endif; ?>
                                 <?php foreach ($staff_users as $user): ?>
                                     <?php
                                     $is_archived = database_user_is_archived($user);

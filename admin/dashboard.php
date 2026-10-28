@@ -10,6 +10,12 @@ $overview = $stats['sales_overview'];
 $sales_history = $stats['sales_history']['history'];
 $forecast = $stats['sales_projection'];
 $pricing = $stats['price_analytics'];
+$overview_search = backoffice_query_text('search');
+$overview_opportunities = array_values(array_filter($pricing['opportunities'], function ($row) use ($overview_search) {
+    return $overview_search === '' || stripos(implode(' ', array(
+        $row['name'] ?? '', $row['brand'] ?? '', $row['price_action'] ?? '', $row['improvement'] ?? ''
+    )), $overview_search) !== false;
+}));
 $channel_summary = backoffice_summarize_transaction_channels(get_admin_dynamic_transactions(0));
 $channel_chart = array(
     array(
@@ -170,12 +176,16 @@ backoffice_render_shell_start(
                     </article>
                 </div>
 
-                <details class="admin-secondary-panel">
+                <details class="admin-secondary-panel"<?php echo $overview_search !== '' ? ' open' : ''; ?>>
                     <summary>View detailed pricing opportunities</summary>
                     <div class="admin-secondary-content">
                 <article class="table-card surface-card">
                     <span class="eyebrow">What to improve</span>
                     <h2 class="display-font">Highest-value pricing actions right now.</h2>
+                    <form method="GET" class="contact-form backoffice-filter-form" role="search">
+                        <div class="backoffice-filter-grid"><div class="field"><label for="overview_search">Search pricing opportunities</label><input type="search" id="overview_search" name="search" value="<?php echo htmlspecialchars($overview_search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search product, brand, or action..."></div></div>
+                        <div class="button-row"><button type="submit" class="button button-dark">Search</button><a href="dashboard.php" class="button button-light">Clear</a></div>
+                    </form>
                     <div class="table-wrap">
                         <table class="data-table">
                             <thead>
@@ -189,7 +199,8 @@ backoffice_render_shell_start(
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach (array_slice($pricing['opportunities'], 0, 8) as $row): ?>
+                                <?php if (empty($overview_opportunities)): ?><tr><td colspan="6">No matching records found.</td></tr><?php endif; ?>
+                                <?php foreach (array_slice($overview_opportunities, 0, 8) as $row): ?>
                                     <tr>
                                         <td><?php echo htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8'); ?></td>
                                         <td><?php echo number_format((float) $row['price'], 2); ?></td>

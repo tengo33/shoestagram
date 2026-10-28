@@ -6,13 +6,22 @@ require_once '../backoffice-layout.php';
 
 backoffice_require_role(array('admin'));
 $filters = array(
+    'search' => backoffice_query_text('search'),
     'product_id' => (int) ($_GET['product_id'] ?? 0),
-    'category' => trim((string) ($_GET['category'] ?? '')),
-    'brand' => trim((string) ($_GET['brand'] ?? '')),
+    'category' => backoffice_query_text('category', 80),
+    'brand' => backoffice_query_text('brand'),
+    'sort' => backoffice_query_text('sort', 30),
 );
 $analytics = store_get_price_analytics($filters);
 $stats = backoffice_get_stats($conn);
 $pricing_rows = $analytics['rows'];
+if (in_array($filters['sort'], array('name', 'price_high', 'price_low'), true)) {
+    usort($pricing_rows, function ($left, $right) use ($filters) {
+        if ($filters['sort'] === 'name') return strcasecmp((string) $left['name'], (string) $right['name']);
+        $order = (float) $left['price'] <=> (float) $right['price'];
+        return ($filters['sort'] === 'price_high' ? -$order : $order) ?: strcasecmp((string) $left['name'], (string) $right['name']);
+    });
+}
 $pricing_pagination = backoffice_paginate_rows($pricing_rows);
 $pricing_chart_rows = !empty($analytics['opportunities'])
     ? array_slice($analytics['opportunities'], 0, 8)
@@ -48,8 +57,9 @@ backoffice_render_shell_start(
                 <article class="admin-card surface-card">
                     <span class="eyebrow">Filters</span>
                     <h2 class="display-font">Analyze pricing by product, brand, or category.</h2>
-                    <form method="GET" class="contact-form">
-                        <div class="form-grid">
+                    <form method="GET" class="contact-form backoffice-filter-form" role="search">
+                        <div class="backoffice-filter-grid">
+                            <div class="field"><label for="pricing_search">Search products</label><input type="search" id="pricing_search" name="search" value="<?php echo htmlspecialchars($filters['search'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search product or brand..."></div>
                             <div class="field">
                                 <label for="product_id">Product</label>
                                 <select id="product_id" name="product_id">
@@ -85,6 +95,7 @@ backoffice_render_shell_start(
                                 </select>
                             </div>
                         </div>
+                        <div class="field"><label for="pricing_sort">Sort records</label><select id="pricing_sort" name="sort"><option value="">Highest modeled revenue</option><option value="name"<?php echo $filters['sort'] === 'name' ? ' selected' : ''; ?>>Product name</option><option value="price_high"<?php echo $filters['sort'] === 'price_high' ? ' selected' : ''; ?>>Highest price</option><option value="price_low"<?php echo $filters['sort'] === 'price_low' ? ' selected' : ''; ?>>Lowest price</option></select></div>
                         <div class="button-row">
                             <button type="submit" class="button button-dark">Apply filters</button>
                             <a href="pricing.php" class="button button-light">Reset</a>
@@ -162,7 +173,7 @@ backoffice_render_shell_start(
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if (empty($pricing_rows)): ?><tr><td colspan="8">No products match these filters.</td></tr><?php endif; ?>
+                                <?php if (empty($pricing_rows)): ?><tr><td colspan="8">No matching records found.</td></tr><?php endif; ?>
                                 <?php foreach ($pricing_rows as $row): ?>
                                     <tr>
                                         <td><?php echo htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8'); ?><br><small><?php echo htmlspecialchars($row['brand'], ENT_QUOTES, 'UTF-8'); ?></small></td>

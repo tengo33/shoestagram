@@ -64,10 +64,11 @@ usort($products, function ($left, $right) {
 });
 
 $filters = array(
-    'month' => trim((string) ($_GET['month'] ?? '')),
+    'search' => backoffice_query_text('search'),
+    'month' => backoffice_query_text('month', 7),
     'year' => (int) ($_GET['year'] ?? 0),
     'product_id' => (int) ($_GET['product_id'] ?? 0),
-    'channel' => trim((string) ($_GET['channel'] ?? '')),
+    'channel' => backoffice_query_text('channel', 20),
 );
 $summary = store_manual_sales_summary($filters);
 $sales_total = (int) $summary['records'];
@@ -138,13 +139,25 @@ backoffice_render_shell_start(
 
                 <article class="admin-card surface-card">
                     <span class="eyebrow">Filter historical entries</span>
-                    <h2 class="display-font">Review a month, product, or sales channel.</h2>
-                    <form method="GET" class="contact-form">
-                        <div class="form-grid">
+                    <h2 class="display-font">Review a reference, month, product, or channel.</h2>
+                    <form method="GET" class="contact-form backoffice-filter-form" role="search">
+                        <div class="backoffice-filter-grid">
+                            <div class="field"><label for="historical_search">Search historical sales</label><input type="search" id="historical_search" name="search" value="<?php echo htmlspecialchars($filters['search'], ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search reference, product, or note..."></div>
                             <div class="field">
                                 <label for="filter_month">Month</label>
                                 <input type="month" id="filter_month" name="month" value="<?php echo htmlspecialchars($filters['month'], ENT_QUOTES, 'UTF-8'); ?>">
                             </div>
+                            <div class="field">
+                                <label for="filter_channel">Channel</label>
+                                <select id="filter_channel" name="channel">
+                                    <option value="">Walk-in and Online</option>
+                                    <?php foreach (store_manual_sale_channels() as $value => $label): ?>
+                                        <option value="<?php echo htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $filters['channel'] === $value ? ' selected' : ''; ?>><?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <details class="backoffice-more-filters"<?php echo $filters['year'] > 0 || $filters['product_id'] > 0 ? ' open' : ''; ?>><summary>More filters</summary><div class="backoffice-filter-grid">
                             <div class="field">
                                 <label for="filter_year">Year</label>
                                 <select id="filter_year" name="year">
@@ -163,16 +176,7 @@ backoffice_render_shell_start(
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="field">
-                                <label for="filter_channel">Channel</label>
-                                <select id="filter_channel" name="channel">
-                                    <option value="">Walk-in and Online</option>
-                                    <?php foreach (store_manual_sale_channels() as $value => $label): ?>
-                                        <option value="<?php echo htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); ?>"<?php echo $filters['channel'] === $value ? ' selected' : ''; ?>><?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
+                        </div></details>
                         <div class="button-row">
                             <button type="submit" class="button button-dark">Apply filters</button>
                             <a href="manual-sales.php" class="button button-light">Reset</a>
@@ -260,7 +264,7 @@ backoffice_render_shell_start(
                             <thead><tr><th>Date</th><th>Product</th><th>Channel</th><th>Quantity</th><th>Total (PHP)</th><th>Source</th><th>Details</th><th>Actions</th></tr></thead>
                             <tbody>
                                 <?php if (empty($sales)): ?>
-                                    <tr><td colspan="8"><div class="empty-state"><strong>No historical sales match these filters.</strong><span>Add a legitimate external sale or change the filters above.</span></div></td></tr>
+                                    <tr><td colspan="8"><div class="empty-state"><strong>No matching records found.</strong><span>Add a legitimate external sale or change the filters above.</span></div></td></tr>
                                 <?php endif; ?>
                                 <?php foreach ($sales as $sale): ?>
                                     <tr>
