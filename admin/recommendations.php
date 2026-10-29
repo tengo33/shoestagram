@@ -7,6 +7,7 @@ require_once '../backoffice-layout.php';
 backoffice_require_role(array('admin'));
 $stats = backoffice_get_stats($conn);
 $insights = $stats['recommendation_insights'];
+$recommended_products = array_slice($insights['most_recommended'], 0, 4);
 
 backoffice_render_head('Shoestagram | Admin Recommendations');
 backoffice_render_shell_start(
@@ -39,7 +40,7 @@ backoffice_render_shell_start(
                     </article>
                     <article class="metric-card surface-card">
                         <span class="meta-label">Engine focus</span>
-                        <strong><?php echo count($insights['most_recommended']); ?></strong>
+                        <strong><?php echo count($recommended_products); ?></strong>
                         <span>High-priority products in the current recommendation set.</span>
                     </article>
                 </div>
@@ -48,13 +49,14 @@ backoffice_render_shell_start(
                     <span class="eyebrow">Most recommended products</span>
                     <h2 class="display-font">Products the system is most likely to push.</h2>
                     <div class="mini-catalog recommendation-catalog">
-                        <?php foreach ($insights['most_recommended'] as $product): ?>
+                        <?php foreach ($recommended_products as $product): ?>
                             <article class="mini-card hover-lift">
                                 <img src="<?php echo htmlspecialchars($product['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?>">
                                 <strong><?php echo htmlspecialchars($product['name'], ENT_QUOTES, 'UTF-8'); ?></strong>
                                 <p><?php echo htmlspecialchars(get_store_recommendation_reason($product), ENT_QUOTES, 'UTF-8'); ?></p>
                             </article>
                         <?php endforeach; ?>
+                        <?php if (empty($recommended_products)): ?><p>No recommended products are available yet.</p><?php endif; ?>
                     </div>
                 </article>
 

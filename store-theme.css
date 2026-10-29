@@ -3036,8 +3036,48 @@ h6 {
     line-height: 1.6;
 }
 
-.recommendation-catalog {
+.mini-catalog.recommendation-catalog {
     counter-reset: recommended-product;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: stretch;
+    gap: 14px;
+}
+
+.admin-card-grid.staff-recommendation-grid {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.recommendation-catalog .mini-card {
+    display: flex;
+    flex: 1 1 calc((100% - 42px) / 4);
+    flex-direction: column;
+    min-width: 0;
+    max-width: 260px;
+}
+
+.recommendation-catalog .mini-card img {
+    height: 150px;
+}
+
+.recommendation-catalog .mini-card p {
+    margin-top: auto;
+    padding-top: 8px;
+}
+
+@media (max-width: 1000px) {
+    .recommendation-catalog .mini-card {
+        flex-basis: calc((100% - 14px) / 2);
+        max-width: 420px;
+    }
+}
+
+@media (max-width: 620px) {
+    .recommendation-catalog .mini-card {
+        flex-basis: 100%;
+        max-width: none;
+    }
 }
 
 .recommendation-catalog .mini-card {
