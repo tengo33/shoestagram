@@ -11,6 +11,7 @@ $profile = array_merge(array(
     'brands' => array(),
     'categories' => array(),
     'styles' => array(),
+    'colors' => array(),
     'shoe_size' => '',
     'apparel_size' => '',
     'budget_max' => '',
@@ -19,6 +20,7 @@ $profile = array_merge(array(
 $brands = get_store_brand_names();
 $categories = get_store_categories();
 $style_options = get_store_style_names();
+$shoe_colors = get_store_shoe_color_options();
 $budget_options = get_store_budget_options();
 $shoe_sizes = array('6', '7', '8', '8.5', '9', '9.5', '10', '11', '12');
 $apparel_sizes = array('S', 'M', 'L', 'XL', 'XXL');
@@ -34,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'brands' => isset($_POST['brands']) && is_array($_POST['brands']) ? array_values(array_filter(array_map('trim', $_POST['brands']))) : array(),
         'categories' => isset($_POST['categories']) && is_array($_POST['categories']) ? array_values(array_filter(array_map('trim', $_POST['categories']))) : array(),
         'styles' => isset($_POST['styles']) && is_array($_POST['styles']) ? array_values(array_filter(array_map('trim', $_POST['styles']))) : array(),
+        'colors' => store_validate_preferred_colors($_POST['colors'] ?? array()),
         'shoe_size' => trim((string) ($_POST['shoe_size'] ?? '')),
         'apparel_size' => trim((string) ($_POST['apparel_size'] ?? '')),
         'budget_max' => trim((string) ($_POST['budget_max'] ?? '')),
@@ -55,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $new_profile['styles'][0] ?? '',
             $new_profile['budget_max']
         );
-        storefront_set_flash('success', 'Your fit profile is saved. The homepage will now show recommendations shaped around your style, sizes, and budget.');
+        storefront_set_flash('success', 'Your fit profile is saved. The homepage will now show recommendations shaped around your style, sizes, shoe colors, and budget.');
         storefront_redirect('index.php');
     }
 
@@ -177,6 +180,20 @@ storefront_render_head(
                             </div>
                         </div>
 
+                        <?php if ($shoe_colors): ?>
+                            <div class="field">
+                                <label>Preferred Shoe Color <small>(optional; choose several)</small></label>
+                                <div class="choice-grid">
+                                    <?php foreach ($shoe_colors as $color): ?>
+                                        <label class="choice-card">
+                                            <input type="checkbox" name="colors[]" value="<?php echo htmlspecialchars($color, ENT_QUOTES, 'UTF-8'); ?>"<?php echo in_array($color, $profile['colors'], true) ? ' checked' : ''; ?>>
+                                            <span><?php echo htmlspecialchars($color, ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
                         <div class="form-grid">
                             <div class="field">
                                 <label for="shoe_size">Shoe size</label>
@@ -232,6 +249,10 @@ storefront_render_head(
                             <div>
                                 <strong>Budget</strong>
                                 <span><?php echo htmlspecialchars($profile['budget_max'] !== '' ? (get_store_budget_options()[$profile['budget_max']] ?? ('PHP ' . $profile['budget_max'] . ' and below')) : 'Any price', ENT_QUOTES, 'UTF-8'); ?></span>
+                            </div>
+                            <div>
+                                <strong>Preferred Shoe Color</strong>
+                                <span><?php echo htmlspecialchars($profile['colors'] ? implode(', ', $profile['colors']) : 'Any color', ENT_QUOTES, 'UTF-8'); ?></span>
                             </div>
                         </div>
                     </article>

@@ -24,6 +24,7 @@ function register_profile_from_post($source)
         'brands' => isset($source['brands']) && is_array($source['brands']) ? array_values(array_filter(array_map('trim', $source['brands']))) : array(),
         'categories' => isset($source['categories']) && is_array($source['categories']) ? array_values(array_filter(array_map('trim', $source['categories']))) : array(),
         'styles' => isset($source['styles']) && is_array($source['styles']) ? array_values(array_filter(array_map('trim', $source['styles']))) : array(),
+        'colors' => store_validate_preferred_colors($source['colors'] ?? array()),
         'shoe_size' => trim((string) ($source['shoe_size'] ?? '')),
         'apparel_size' => trim((string) ($source['apparel_size'] ?? '')),
         'budget_max' => trim((string) ($source['budget_max'] ?? '')),
@@ -39,6 +40,7 @@ $password_rules = database_password_requirements_text();
 $brands = get_store_brand_names();
 $categories = get_store_categories();
 $style_options = get_store_style_names();
+$shoe_colors = get_store_shoe_color_options();
 $budget_options = get_store_budget_options();
 $shoe_sizes = array('6', '7', '8', '8.5', '9', '9.5', '10', '11', '12');
 $apparel_sizes = array('S', 'M', 'L', 'XL', 'XXL');
@@ -46,6 +48,7 @@ $profile_value = array(
     'brands' => array(),
     'categories' => array(),
     'styles' => array(),
+    'colors' => array(),
     'shoe_size' => '',
     'apparel_size' => '',
     'budget_max' => '',
@@ -442,6 +445,27 @@ $profile_value = !empty($profile_value['categories']) || !empty($profile_value['
                                     </details>
                                     <small class="field-note auth-field-note-spacer" aria-hidden="true">&nbsp;</small>
                                 </div>
+                                <?php if ($shoe_colors): ?>
+                                    <div class="field auth-preference-field auth-preference-span">
+                                        <label>Preferred Shoe Color <small>(optional)</small></label>
+                                        <details class="multi-choice-select">
+                                            <summary>
+                                                <span>Choose shoe colors</span>
+                                                <small><?php echo count($profile_value['colors']); ?> selected</small>
+                                                <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                                            </summary>
+                                            <div class="choice-grid auth-choice-grid multi-choice-panel">
+                                                <?php foreach ($shoe_colors as $color): ?>
+                                                    <label class="choice-card">
+                                                        <input type="checkbox" name="colors[]" value="<?php echo htmlspecialchars($color, ENT_QUOTES, 'UTF-8'); ?>"<?php echo in_array($color, $profile_value['colors'], true) ? ' checked' : ''; ?>>
+                                                        <span><?php echo htmlspecialchars($color, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                    </label>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </details>
+                                        <small class="field-note">Select more than one if you like.</small>
+                                    </div>
+                                <?php endif; ?>
                             </div>
 
                             <div class="form-grid auth-sizing-grid">

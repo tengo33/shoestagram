@@ -37,6 +37,7 @@ $recommended = get_store_recommended_products(array(
     'brand' => $personalization_seed['brand'],
     'style' => $personalization_seed['style'],
     'max_price' => $personalization_seed['max_price'],
+    'colors' => $personalization_seed['colors'],
     'limit' => 4,
 ));
 $fit_for_you = $profile_complete ? get_store_personalized_products($profile, 4, 'shoes') : array();
@@ -139,7 +140,7 @@ storefront_render_head(
                     </div>
                     <a href="preferences.php" class="text-link">Edit fit profile <i class="fas fa-arrow-right"></i></a>
                 </div>
-                <p class="section-copy">These picks are prioritized using your sizes, favorite categories, brand preferences, style direction, and budget range.</p>
+                <p class="section-copy">These picks are prioritized using your sizes, favorite categories, brands, styles, shoe colors, and budget range.</p>
                 <div class="product-grid">
                     <?php foreach ($fit_for_you as $product): ?>
                         <?php storefront_render_product_card($product, array(

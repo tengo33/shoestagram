@@ -5,6 +5,7 @@ require_once __DIR__ . '/database/store_state.php';
 require_once __DIR__ . '/database/size_stock.php';
 require_once __DIR__ . '/database/forecast_api.php';
 require_once __DIR__ . '/database/review_seed.php';
+require_once __DIR__ . '/database/color_preferences.php';
 
 function store_db_connection()
 {
@@ -1460,6 +1461,8 @@ function store_recommendation_score($product, $options = array())
     if ($max_price > 0 && (float) ($product['price'] ?? 0) <= $max_price) {
         $score += 10;
     }
+
+    $score += store_color_preference_bonus($product, $options['colors'] ?? array());
 
     if (!empty($product['is_low_stock'])) {
         $score += 6;
@@ -3494,6 +3497,10 @@ function get_store_recommendation_reason($product, $options = array())
         return 'Matches your preferred brand';
     }
 
+    if (store_product_matches_preferred_colors($product, $options['colors'] ?? array())) {
+        return 'Matches your preferred shoe color';
+    }
+
     if ($preferred_style !== '' && (strpos(strtolower((string) $product['style']), $preferred_style) !== false || in_array($preferred_style, array_map('strtolower', $product['preference_tags']), true))) {
         return 'Aligned with your style preference';
     }
@@ -3537,7 +3544,7 @@ function get_store_personalized_products($profile, $limit = 6, $preferred_catego
     $preferred_category = strtolower(trim((string) $preferred_category));
 
     foreach ($products as &$product) {
-        $score = store_recommendation_score($product);
+        $score = store_recommendation_score($product, array('colors' => $profile['colors'] ?? array()));
         $product_brand = strtolower((string) $product['brand']);
         $product_category = strtolower((string) $product['category']);
         $product_style = strtolower((string) $product['style']);

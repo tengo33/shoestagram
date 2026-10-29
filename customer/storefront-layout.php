@@ -80,6 +80,7 @@ function storefront_get_personalization_seed($context, $overrides = array())
         'brand' => trim((string) ($overrides['brand'] ?? $preferences['brand'])),
         'style' => trim((string) ($overrides['style'] ?? $preferences['style'])),
         'max_price' => trim((string) ($overrides['max_price'] ?? $preferences['max_price'])),
+        'colors' => !empty($context['is_logged_in']) ? (store_state_get_user_profile($context['user_email'])['colors'] ?? array()) : array(),
     );
 
     $recent_views = storefront_get_recent_views();

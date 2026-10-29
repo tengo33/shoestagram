@@ -385,6 +385,7 @@ function store_state_get_user_profile($email)
             ? array_values(array_map('store_state_normalize_category', $profile['categories']))
             : array(),
         'styles' => isset($profile['styles']) && is_array($profile['styles']) ? array_values($profile['styles']) : array(),
+        'colors' => isset($profile['colors']) && is_array($profile['colors']) ? array_values($profile['colors']) : array(),
         'shoe_size' => isset($profile['shoe_size']) ? trim((string) $profile['shoe_size']) : '',
         'apparel_size' => isset($profile['apparel_size']) ? trim((string) $profile['apparel_size']) : '',
         'budget_max' => isset($profile['budget_max']) ? trim((string) $profile['budget_max']) : '',
@@ -414,6 +415,7 @@ function store_state_save_user_profile($email, $profile)
             ? array_values(array_unique(array_map('store_state_normalize_category', $profile['categories'])))
             : array(),
         'styles' => isset($profile['styles']) && is_array($profile['styles']) ? array_values(array_unique(array_map('strval', $profile['styles']))) : array(),
+        'colors' => isset($profile['colors']) && is_array($profile['colors']) ? array_values(array_unique(array_map('strval', $profile['colors']))) : array(),
         'shoe_size' => trim((string) ($profile['shoe_size'] ?? '')),
         'apparel_size' => trim((string) ($profile['apparel_size'] ?? '')),
         'budget_max' => trim((string) ($profile['budget_max'] ?? '')),

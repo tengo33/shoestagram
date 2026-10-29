@@ -45,6 +45,7 @@ $recommended = get_store_recommended_products(array(
     'brand' => $personalization_seed['brand'],
     'style' => $personalization_seed['style'],
     'max_price' => $personalization_seed['max_price'],
+    'colors' => $personalization_seed['colors'],
     'limit' => 3,
 ));
 $active_filter_count = 0;
