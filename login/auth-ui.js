@@ -124,10 +124,50 @@
         });
     }
 
+    function bindPolicyDialogs() {
+        document.querySelectorAll('[data-policy-open]').forEach((link) => {
+            const dialog = document.getElementById(link.dataset.policyOpen);
+            if (!dialog || typeof dialog.showModal !== 'function') return;
+
+            link.addEventListener('click', (event) => {
+                event.preventDefault();
+                dialog.showModal();
+                dialog.querySelector('[data-policy-close]')?.focus();
+            });
+            dialog.addEventListener('close', () => link.focus());
+            dialog.addEventListener('click', (event) => {
+                if (event.target === dialog) dialog.close();
+            });
+        });
+
+        document.querySelectorAll('.auth-policy-dialog [data-policy-close]').forEach((button) => {
+            button.addEventListener('click', () => button.closest('dialog')?.close());
+        });
+    }
+
+    function bindRegistrationAgreement() {
+        const checkbox = document.getElementById('agree_policies');
+        const error = document.getElementById('agreement-error');
+        const form = checkbox?.closest('form');
+        if (!checkbox || !error || !form) return;
+
+        checkbox.addEventListener('change', () => {
+            if (checkbox.checked) error.hidden = true;
+        });
+        form.addEventListener('submit', (event) => {
+            if (checkbox.checked) return;
+            event.preventDefault();
+            error.hidden = false;
+            checkbox.focus();
+        });
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
         bindPasswordToggles();
         bindPasswordStrength();
         bindMultiChoiceSelects();
+        bindPolicyDialogs();
+        bindRegistrationAgreement();
         bindAuthTransitions();
     });
 })();

@@ -1,5 +1,6 @@
 <?php
 require_once '../store-data.php';
+require_once __DIR__ . '/registration-policies.php';
 
 function register_send_verification_code($email, $fullname, $code)
 {
@@ -29,6 +30,53 @@ function register_profile_from_post($source)
         'apparel_size' => trim((string) ($source['apparel_size'] ?? '')),
         'budget_max' => trim((string) ($source['budget_max'] ?? '')),
     );
+}
+
+function register_create_user_with_agreement($connection, $pending)
+{
+    $agreement = $pending['agreement'] ?? array();
+    if (!shoestagram_registration_agreement_is_current($agreement)) {
+        return array('ok' => false, 'message' => 'Start registration again and accept the current policies.');
+    }
+    $transaction_started = false;
+    try {
+        $transaction_started = mysqli_begin_transaction($connection);
+        if (!$transaction_started) {
+            return array('ok' => false, 'message' => 'Registration could not be completed right now. Please try again.');
+        }
+        $result = database_create_user_record($connection, array(
+            'fullname' => $pending['fullname'] ?? '',
+            'email' => $pending['email'] ?? '',
+            'password' => $pending['password'] ?? '',
+            'role' => 'customer',
+        ));
+        if (empty($result['ok'])) {
+            mysqli_rollback($connection);
+            return $result;
+        }
+
+        $actor = array(
+            'id' => (int) $result['user_id'],
+            'fullname' => (string) ($pending['fullname'] ?? ''),
+            'email' => (string) ($pending['email'] ?? ''),
+            'role' => 'customer',
+        );
+        if (!database_log_activity($connection, $actor, 'Agreement', shoestagram_registration_agreement_description($agreement))) {
+            mysqli_rollback($connection);
+            return array('ok' => false, 'message' => 'Your agreement could not be recorded. Please try again.');
+        }
+        if (!mysqli_commit($connection)) {
+            mysqli_rollback($connection);
+            return array('ok' => false, 'message' => 'Registration could not be completed right now. Please try again.');
+        }
+        return $result;
+    } catch (Throwable $exception) {
+        if ($transaction_started) {
+            mysqli_rollback($connection);
+        }
+        error_log('Shoestagram registration: account or agreement transaction failed.');
+        return array('ok' => false, 'message' => 'Registration could not be completed right now. Please try again.');
+    }
 }
 
 $error = '';
@@ -85,6 +133,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($register_action === 'resend_code') {
         if (empty($pending_registration)) {
             $error = 'Start registration again so we know where to send the code.';
+        } elseif (!shoestagram_registration_agreement_is_current($pending_registration['agreement'] ?? array())) {
+            $error = 'Start registration again to review and accept the current policies.';
         } else {
             $code = shoestagram_generate_verification_code();
             $delivery_ok = register_send_verification_code($pending_registration['email'], $pending_registration['fullname'], $code);
@@ -102,6 +152,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (empty($pending_registration)) {
             $error = 'Start registration again so we can verify your email first.';
+        } elseif (!shoestagram_registration_agreement_is_current($pending_registration['agreement'] ?? array())) {
+            $error = 'Start registration again to review and accept the current policies.';
         } elseif ($verification_code === '') {
             $error = 'Enter the 6-digit verification code first.';
         } elseif (!shoestagram_pending_has_active_verification_code($pending_registration)) {
@@ -109,12 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (!shoestagram_pending_verification_code_matches($pending_registration, $verification_code)) {
             $error = 'That verification code did not match.';
         } else {
-            $result = database_create_user_record($conn, array(
-                'fullname' => $pending_registration['fullname'] ?? '',
-                'email' => $pending_registration['email'] ?? '',
-                'password' => $pending_registration['password'] ?? '',
-                'role' => 'customer',
-            ));
+            $result = register_create_user_with_agreement($conn, $pending_registration);
 
             if (!empty($result['ok'])) {
                 $created_user = database_get_user_by_id($conn, (int) ($result['user_id'] ?? 0));
@@ -163,6 +210,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Passwords do not match.';
         } elseif ($password_error !== '') {
             $error = $password_error;
+        } elseif (!shoestagram_registration_agreement_requested($_POST['agree_policies'] ?? null)) {
+            $error = 'Please read and agree to the Terms and Conditions and Privacy Policy before continuing.';
         } elseif (database_get_user_by_email($conn, $email_value)) {
             $error = 'That email is already registered. Please sign in instead.';
         } elseif (empty($profile_value['categories'])) {
@@ -181,6 +230,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'email' => $email_value,
                     'password' => $password,
                     'profile' => $profile_value,
+                    'agreement' => array(
+                        'accepted' => true,
+                        'accepted_at_utc' => gmdate('Y-m-d\TH:i:s\Z'),
+                        'terms_version' => shoestagram_registration_policy_versions()['terms'],
+                        'privacy_version' => shoestagram_registration_policy_versions()['privacy'],
+                    ),
                 ), $code);
                 $_SESSION['shoestagram_pending_registration'] = $pending_registration;
                 $success = 'We sent a 6-digit verification code to ' . $email_value . '. Enter it below to finish creating your account.';
@@ -217,7 +272,7 @@ $profile_value = !empty($profile_value['categories']) || !empty($profile_value['
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="../store-theme.css?v=auth-20260908">
+    <link rel="stylesheet" href="../store-theme.css?v=auth-policy-20261029">
 </head>
 <body class="auth-body auth-register-page">
     <div class="bg-mesh bg-mesh-left"></div>
@@ -501,6 +556,16 @@ $profile_value = !empty($profile_value['categories']) || !empty($profile_value['
                             </div>
                         </section>
 
+                        <div class="auth-policy-agreement">
+                            <input type="checkbox" id="agree_policies" name="agree_policies" value="1" autocomplete="off" aria-label="I have read and agree to the Terms and Conditions and Privacy Policy." aria-describedby="agreement-error">
+                            <div class="auth-policy-agreement-copy">
+                                <label for="agree_policies">I have read and agree to the</label>
+                                <a href="#terms-dialog" data-policy-open="terms-dialog">Terms and Conditions</a>
+                                <span>and</span>
+                                <a href="#privacy-dialog" data-policy-open="privacy-dialog">Privacy Policy</a><span>.</span>
+                            </div>
+                        </div>
+                        <p id="agreement-error" class="auth-policy-error" role="alert" hidden>Please read and agree to the Terms and Conditions and Privacy Policy before continuing.</p>
                         <button type="submit" class="button button-dark auth-submit">Send verification code <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
                     </form>
                 <?php endif; ?>
@@ -512,6 +577,36 @@ $profile_value = !empty($profile_value['categories']) || !empty($profile_value['
         </div>
     </main>
 
-    <script src="auth-ui.js?v=auth-20260908"></script>
+    <?php foreach (array(
+        array('id' => 'terms-dialog', 'title' => 'Terms and Conditions', 'version' => shoestagram_registration_policy_versions()['terms'], 'sections' => shoestagram_registration_terms()),
+        array('id' => 'privacy-dialog', 'title' => 'Privacy Policy', 'version' => shoestagram_registration_policy_versions()['privacy'], 'sections' => shoestagram_registration_privacy_policy()),
+    ) as $policy): ?>
+        <dialog id="<?php echo htmlspecialchars($policy['id'], ENT_QUOTES, 'UTF-8'); ?>" class="auth-policy-dialog" aria-labelledby="<?php echo htmlspecialchars($policy['id'], ENT_QUOTES, 'UTF-8'); ?>-title" aria-modal="true">
+            <div class="auth-policy-modal">
+                <header class="auth-policy-modal-head">
+                    <div>
+                        <span class="eyebrow">Shoestagram customer agreement</span>
+                        <h2 id="<?php echo htmlspecialchars($policy['id'], ENT_QUOTES, 'UTF-8'); ?>-title" class="display-font"><?php echo htmlspecialchars($policy['title'], ENT_QUOTES, 'UTF-8'); ?></h2>
+                    </div>
+                    <button type="button" class="auth-policy-icon-close" data-policy-close aria-label="Close <?php echo htmlspecialchars($policy['title'], ENT_QUOTES, 'UTF-8'); ?>"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+                </header>
+                <div class="auth-policy-modal-content" tabindex="0">
+                    <p class="auth-policy-version">Version <?php echo htmlspecialchars($policy['version'], ENT_QUOTES, 'UTF-8'); ?> &middot; Read this policy before registering.</p>
+                    <?php foreach ($policy['sections'] as $section): ?>
+                        <section>
+                            <h3><?php echo htmlspecialchars($section[0], ENT_QUOTES, 'UTF-8'); ?></h3>
+                            <p><?php echo htmlspecialchars($section[1], ENT_QUOTES, 'UTF-8'); ?></p>
+                        </section>
+                    <?php endforeach; ?>
+                </div>
+                <footer class="auth-policy-modal-foot">
+                    <span>Questions? <a href="mailto:<?php echo htmlspecialchars(shoestagram_support_email(), ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(shoestagram_support_email(), ENT_QUOTES, 'UTF-8'); ?></a></span>
+                    <button type="button" class="button button-dark" data-policy-close>Close</button>
+                </footer>
+            </div>
+        </dialog>
+    <?php endforeach; ?>
+
+    <script src="auth-ui.js?v=auth-policy-20261029"></script>
 </body>
 </html>

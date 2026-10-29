@@ -5263,6 +5263,81 @@ h6 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.auth-register-page .auth-policy-agreement {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 22px 0 9px;
+    color: #414b54;
+    font-size: 0.88rem;
+    line-height: 1.55;
+}
+
+.auth-register-page .auth-policy-agreement > input {
+    width: 19px;
+    height: 19px;
+    flex: 0 0 19px;
+    margin: 2px 0 0;
+    accent-color: #15191f;
+    cursor: pointer;
+}
+
+.auth-register-page .auth-policy-agreement > input:focus-visible,
+.auth-policy-dialog :focus-visible {
+    outline: 3px solid rgba(191, 91, 52, 0.6);
+    outline-offset: 3px;
+}
+
+.auth-policy-agreement-copy a,
+.auth-policy-modal-foot a {
+    color: #ad5033;
+    font-weight: 750;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.auth-policy-agreement-copy label { cursor: pointer; }
+.auth-policy-agreement-copy span { margin: 0 3px; }
+.auth-register-page .auth-policy-error { margin: 0 0 10px 31px; color: #a5332a; font-size: 0.82rem; }
+.auth-register-page .auth-policy-error[hidden] { display: none; }
+
+.auth-policy-dialog {
+    width: min(720px, calc(100vw - 32px));
+    max-width: none;
+    max-height: min(88vh, 800px);
+    padding: 0;
+    border: 1px solid #e2dfda;
+    border-radius: 18px;
+    color: #24303a;
+    background: #faf9f6;
+    box-shadow: 0 25px 80px rgba(11, 17, 24, 0.25);
+}
+
+.auth-policy-dialog::backdrop { background: rgba(11, 17, 24, 0.68); }
+.auth-policy-modal { display: flex; flex-direction: column; max-height: min(88vh, 800px); }
+.auth-policy-modal-head,
+.auth-policy-modal-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px; }
+.auth-policy-modal-head { border-bottom: 1px solid #e7e2dc; }
+.auth-policy-modal-head .eyebrow { color: #ac5a3c; }
+.auth-policy-modal-head h2 { margin: 4px 0 0; font-size: clamp(1.35rem, 3vw, 1.9rem); }
+.auth-policy-icon-close { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 38px; border: 1px solid #e4ded8; border-radius: 50%; background: #fff; color: #29333b; cursor: pointer; }
+.auth-policy-modal-content { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px 24px 28px; line-height: 1.65; }
+.auth-policy-version { margin: 0 0 20px; color: #6a737b; font-size: 0.82rem; }
+.auth-policy-modal-content section + section { margin-top: 21px; }
+.auth-policy-modal-content h3 { margin: 0 0 6px; color: #202b34; font-size: 1rem; }
+.auth-policy-modal-content p { margin: 0; color: #4c5760; font-size: 0.91rem; }
+.auth-policy-modal-foot { border-top: 1px solid #e7e2dc; font-size: 0.82rem; }
+.auth-policy-modal-foot .button { min-width: 90px; justify-content: center; }
+
+@media (max-width: 600px) {
+    .auth-policy-dialog { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); border-radius: 12px; }
+    .auth-policy-modal { max-height: calc(100dvh - 20px); }
+    .auth-policy-modal-head,
+    .auth-policy-modal-foot { padding: 14px 16px; }
+    .auth-policy-modal-content { padding: 16px; }
+    .auth-policy-modal-foot span { overflow-wrap: anywhere; }
+}
+
 .auth-register-page .choice-card {
     min-height: 44px;
     padding: 9px 11px;
